@@ -12,7 +12,7 @@ from pybotb.botb import Condition
 @pytest.fixture
 def botb():
     """Shared fixture containing BotB API object."""
-    return pybotb.botb.BotB()
+    return pybotb.botb.BotB(app_name="pyBotB test suite")
 
 
 def test_botb_api_botbr(botb):
@@ -116,12 +116,6 @@ def test_botb_api_tag(botb):
     for tag in ret:
         assert tag.entry_id == 71306
 
-    # pyBotB convenience wrappers
-    ret = botb.tag_list_for_entry(73426)
-    assert ret
-    for tag in ret:
-        assert tag.entry_id == 73426
-
 
 def test_botb_api_palette(botb):
     """Test palette API methods."""
@@ -208,6 +202,12 @@ def test_botb_api_entry(botb):
     #for e in ret:
     #	assert type(e) == pybotb.botb.Entry
     #	assert e.id in ret_ids
+
+    # pyBotB convenience wrappers
+    ret = botb.entry_get_tags(73426)
+    assert ret
+    for tag in ret:
+        assert tag.entry_id == 73426
 
 
 def test_botb_api_battle(botb):

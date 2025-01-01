@@ -10,6 +10,7 @@ import pytz
 from typing import cast, Any, Callable, Dict, List, Optional, TypedDict, Union, Self
 from urllib.parse import quote, urlencode
 
+from . import VERSION
 from .utils import Session, unroll_payload, int_list_to_sql, cached_property_dep
 
 #: Level-up point requirements for a BotBr.
@@ -946,9 +947,32 @@ class BotB:
     at any moment).
     """
 
-    def __init__(self):
+    def __init__(self, app_name=str):
+        """
+        Initialize the BotB API access object.
+
+        :param app_name: App name to be used in the user agent for requests;
+                         see `:attr:.app_name`.
+        """
         #: Internal Session object.
         self._s = Session()
+
+    @property
+    def app_name(self) -> str:
+        """
+        Custom app name; added to the user agent.
+
+        Setting this is highly recommended.
+        """
+        try:
+            return self._app_name
+        except AttributeError:
+            return ""
+
+    @app_name.setter
+    def app_name(self, app_name: str):
+        self._app_name = app_name
+        self._s.set_user_agent(f"{app_name} (pyBotB {VERSION})")
 
     # Common API methods
 
