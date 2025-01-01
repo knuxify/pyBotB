@@ -65,15 +65,15 @@ def test_botb_api_botbr(botb):
     assert botb.botbr_get_id_for_username("uart") == 16333
     assert botb.botbr_load_for_username("uart") == botb.botbr_load(16333)
 
-    ret = botb.entry_get_favorites(73426)
-    assert ret
-    for fav in ret:
-        assert fav.entry_id == 73426
-
     ret = botb.botbr_get_favorites(16333)
     assert ret
     for fav in ret:
         assert fav.botbr_id == 16333
+
+    ret = botb.botbr_get_palettes(16333)
+    assert ret
+    for palette in ret:
+        assert palette.botbr_id == 16333
 
 
 def test_botb_api_favorite(botb):
@@ -152,12 +152,6 @@ def test_botb_api_palette(botb):
     assert ret
     assert type(ret) == pybotb.botb.Palette
 
-    # pyBotB convenience wrappers
-    ret = botb.palette_list_for_botbr(16333)
-    assert ret
-    for palette in ret:
-        assert palette.botbr_id == 16333
-
 
 def test_botb_api_playlist(botb):
     """Test playlist API methods."""
@@ -222,7 +216,11 @@ def test_botb_api_entry(botb):
     #	assert type(e) == pybotb.botb.Entry
     #	assert e.id in ret_ids
 
-    # pyBotB convenience wrappers
+    ret = botb.entry_get_favorites(73426)
+    assert ret
+    for fav in ret:
+        assert fav.entry_id == 73426
+
     ret = botb.entry_get_tags(73426)
     assert ret
     for tag in ret:

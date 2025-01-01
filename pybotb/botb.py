@@ -448,6 +448,96 @@ class Battle:
 
 
 @dataclass
+class EntryAuthor:
+    """
+    Represents an entry author, as returned in the "authors" field of the entry API.
+    """
+
+    #: String representing the aura PNG name for this BotBr; usually the BotBr ID zero-
+    #: padded to 8 characters.
+    #:
+    #: This is used to calculate the aura URL in :attr:`.BotBr.aura_url`.
+    aura: str
+
+    #: Fallback color for the aura, as a hex value (#ffffff).
+    aura_color: str
+
+    @property
+    def aura_url(self) -> str:
+        """
+        URL to the aura PNG; calculated from :attr:`.BotBr.aura`.
+
+        This is a pyBotB-specific property.
+        """
+        return f"https://battleofthebits.com/disk/botbr_auras/{self.aura}.png"
+
+    #: Relative URL to the BotBr's current avatar (/disk/...)
+    avatar: str
+
+    #: Relative URL to the BotBr's avatar at the time of the entry's submission (/disk/...)
+    avatar_from_time: str
+
+    #: The BotBr's class; i.e., the class that appears next to the level on-site.
+    #: This class is derived from the highest points in the points array at level-up
+    #: time.
+    #:
+    #: In the BotB API, this field is named "class"; however, it is renamed here to
+    #: avoid collisions with the class keyword used by Python.
+    botbr_class: str
+
+    #: String containing HTML div representing the icon. This is BotB-specific and
+    #: likely of not much use to implementations.
+    class_icon: str
+
+    #: The country code of the author.
+    country_code: str
+
+    #: The country name of the author.
+    country_name: str
+
+    #: The author's BotBr ID.
+    id: int
+
+    #: The author's current level.
+    level: int
+
+    #: The author's username.
+    name: str
+
+    #: The full URL to the author's BotB profile.
+    profile_url: str
+
+    #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
+    #: value that isn't exposed through the class.
+    _raw_payload: Optional[dict] = field(default=None, repr=False)
+
+    @classmethod
+    def from_payload(cls, payload: dict) -> Self:
+        """
+        Convert a JSON payload (provided as a dict) into a BotBr object.
+
+        :param payload: Dictionary containing the JSON payload.
+        :returns: The resulting BotBr object.
+        """
+        ret = unroll_payload(
+            cls,
+            payload,
+            payload_to_attr={
+                "class": "botbr_class",
+            },
+        )
+        ret._raw_payload = payload.copy()
+
+        return ret
+
+    def __repr__(self):
+        return f"<EntryAuthor: {self.name} (Level {self.level} {self.botbr_class}, ID {self.id})>"
+
+    def __str__(self):
+        return self.__repr__()
+
+
+@dataclass
 class Entry:
     """Represents a battle entry."""
 
@@ -988,8 +1078,6 @@ class BotB:
         :returns: A dictionary containing the JSON result, or None if not found.
         :raises ConnectionError: On connection error.
         """
-        # TODO - API returns 500 on not found instead of 404, prompting a retry.
-        # Find a way to jack into requests to fix this.
         ret = self._s.get(
             f"https://battleofthebits.com/api/v1/{object_type}/load/{object_id}",
             handle_notfound=True
@@ -1318,43 +1406,46 @@ class BotB:
             conditions=conditions,
         )
 
+    def botbr_get_palettes(
+        self,
+        botbr_id: int,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, str]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[Palette]:
+        """
+        List all palettes created by the BotBr with the given ID.
+
+        Convinience shorthand for `:py:method:.BotB.palette_list` which pre-fills the
+        filters to search for the entry and automatically aggregates all results pages.
+
+        :param entry_id: ID of the entry to get palettes for.
+        :param desc: If True, returns items in descending order.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value as
+            the value. Note that filters are deprecated; conditions should be used
+            instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of Palette objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        _filters = {"botbr_id": botbr_id}
+        if filters:
+            _filters = filters | {_filters}
+
+        return self.list_iterate_over_pages(
+            self.palette_list,
+            sort=sort or "id",
+            desc=desc,
+            filters=_filters,
+            conditions=conditions,
+        )
+
     #
     # Entry
     #
-
-    def entry_get_author_botbrs(self, entry: Entry) -> List[BotBr]:
-        """
-        Fetch full information about all authors. By default, the
-        BotB API only returns limited information about entry authors other than the
-        main submitter. If you need the full BotBr data of *all* entry
-        collaborators, setting this to True will cause pyBotB to send out a fetch to
-        get the info of every BotBr in the authors list, and fill in the data.
-        :returns: The modified Entry object. Note that this function also performs all
-            operations in-place.
-        :raises ConnectionError: On connection error (if authors_full is True).
-        """
-        out = {}
-
-        author_ids = set([a.id for a in entry.authors[1:]])
-
-        botbrs = dict(
-            [
-                (b.id, b)
-                for b in self.list_iterate_over_pages(
-                    self.botbr_list,
-                    sort="id",
-                    conditions=[Condition("id", "IN", int_list_to_sql(author_ids))],
-                )
-            ]
-        )
-
-        i = 0
-        for author in entry.authors:
-            if author.id in botbrs:
-                entry.authors[i] = botbrs[author.id]
-            i += 1
-
-        return entry
 
     def entry_load(self, entry_id: int) -> Union[Entry, None]:
         """
@@ -1869,43 +1960,6 @@ class BotB:
         ret = self._random("palette")
 
         return Palette.from_payload(ret)
-
-    def palette_list_for_botbr(
-        self,
-        botbr_id: int,
-        desc: bool = False,
-        sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
-        conditions: Optional[List[Condition]] = None,
-    ) -> List[Palette]:
-        """
-        List all palettes created by the BotBr with the given ID.
-
-        Convinience shorthand for `:py:method:.BotB.palette_list` which pre-fills the
-        filters to search for the entry and automatically aggregates all results pages.
-
-        :param entry_id: ID of the entry to get palettes for.
-        :param desc: If True, returns items in descending order.
-        :param sort: Object property to sort by.
-        :param filters: Dictionary with object property as the key and filter value as
-            the value. Note that filters are deprecated; conditions should be used
-            instead.
-        :param conditions: List of Condition objects containing list conditions.
-        :returns: List of Palette objects representing the search results. If the search
-            returned no results, the list will be empty.
-        :raises ConnectionError: On connection error.
-        """
-        _filters = {"botbr_id": botbr_id}
-        if filters:
-            _filters = filters | {_filters}
-
-        return self.list_iterate_over_pages(
-            self.palette_list,
-            sort=sort or "id",
-            desc=desc,
-            filters=_filters,
-            conditions=conditions,
-        )
 
     def palette_current_default(self) -> Palette:
         """
