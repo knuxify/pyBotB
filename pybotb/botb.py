@@ -991,7 +991,8 @@ class BotB:
         # TODO - API returns 500 on not found instead of 404, prompting a retry.
         # Find a way to jack into requests to fix this.
         ret = self._s.get(
-            f"https://battleofthebits.com/api/v1/{object_type}/load/{object_id}"
+            f"https://battleofthebits.com/api/v1/{object_type}/load/{object_id}",
+            handle_notfound=True
         )
         if ret.status_code == 404:
             return None

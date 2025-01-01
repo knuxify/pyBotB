@@ -37,13 +37,23 @@ class Session(requests.Session):
         self.mount("https://", HTTPAdapter(max_retries=REQ_RETRIES))
         self.set_user_agent("pybotb {VERSION}")
 
-    def get(self, url: str, retry_count: int = 0, **kwargs):  # typing: ignore
-        """Wrapper for self._s.get with better retry handling."""
+    def get(self, url: str, handle_notfound: bool = False, retry_count: int = 0, **kwargs):  # typing: ignore
+        """
+        Wrapper for self._s.get with better retry handling.
+
+        :param url: URL to access.
+        :param handle_notfound: Hack to handle load API returning error 500 on 404.
+        :param retry_count: Current retry count.
+        """
         if retry_count > MAX_RETRIES:
             raise ConnectionError("Maximum retries reached")
 
         try:
             ret = super().get(url, **kwargs)
+            if ret.status_code == 500 and handle_notfound:
+                json = ret.json()
+                if "unfounded" in json["response_message"]:
+                    ret.status_code = 404
         except:
             if (retry_count + 1) > MAX_RETRIES:
                 raise ConnectionError("Maximum retries reached")

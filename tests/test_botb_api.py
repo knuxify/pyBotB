@@ -25,9 +25,8 @@ def test_botb_api_botbr(botb):
     assert ret.name == "uart"
 
     # Load 404
-    # TODO, fix this, it's broken!
-    # ret = botb.botbr_load(12345678987654321)
-    # assert ret is None
+    ret = botb.botbr_load(12345678987654321)
+    assert ret is None
 
     # Random
     ret = botb.botbr_random()
@@ -85,6 +84,10 @@ def test_botb_api_favorite(botb):
     assert ret
     assert ret.id == 1549547
 
+    # Load 404
+    ret = botb.favorite_load(12345678987654321)
+    assert ret is None
+
     # Random
     ret = botb.favorite_random()
     assert ret
@@ -105,6 +108,10 @@ def test_botb_api_tag(botb):
     assert ret
     assert ret.id == 1
 
+    # Load 404
+    ret = botb.tag_load(12345678987654321)
+    assert ret is None
+
     # Random
     ret = botb.tag_random()
     assert ret
@@ -124,6 +131,10 @@ def test_botb_api_palette(botb):
     ret = botb.palette_load(2640)
     assert ret
     assert ret.id == 2640
+
+    # Load 404
+    ret = botb.palette_load(12345678987654321)
+    assert ret is None
 
     # Random
     ret = botb.palette_random()
@@ -156,6 +167,10 @@ def test_botb_api_playlist(botb):
     assert ret
     assert ret.id == 100
 
+    # Load 404
+    ret = botb.playlist_load(12345678987654321)
+    assert ret is None
+
     # Random
     ret = botb.playlist_random()
     assert ret
@@ -183,6 +198,10 @@ def test_botb_api_entry(botb):
     ret = botb.entry_load(73426)
     assert ret
     assert ret.id == 73426
+
+    # Load 404
+    ret = botb.entry_load(12345678987654321)
+    assert ret is None
 
     # Random
     ret = botb.entry_random()
@@ -217,6 +236,10 @@ def test_botb_api_battle(botb):
     ret = botb.battle_load(9514)
     assert ret
     assert ret.id == 9514
+
+    # Load 404
+    ret = botb.battle_load(12345678987654321)
+    assert ret is None
 
     # Random
     ret = botb.battle_random()
