@@ -1,9 +1,15 @@
 # SPDX-License-Identifier: MIT
 import dataclasses
+from functools import cached_property
 from enum import Enum
 import requests
 from requests.adapters import HTTPAdapter, Retry
 from typing import Any, Type, List, Optional, cast
+import sys
+if sys.version_info >= (3, 12):
+    from typing import GenericAlias
+else:
+    from typing_extensions import GenericAlias
 import time
 
 
@@ -112,3 +118,62 @@ def unroll_payload(
 def int_list_to_sql(int_list: List[int]) -> str:
     """Convert a list of ints to an SQL list as a string, to be passed to Conditionals."""
     return "(" + ",".join([str(i) for i in int_list]) + ")"
+
+_NOT_FOUND = object()
+_NOT_INITIALIZED = object()
+
+class cached_property_dep:
+    """
+    Decorator inspired by cached_property which automatically invalidates
+    the property when an attribute with the given name changes.
+    """
+    def __init__(self, dep_attrname: str = ""):
+        self.func = None
+        self.attrname = None
+        self._attr_cached = _NOT_INITIALIZED
+        self.dep_attrname = dep_attrname
+        self._dep_attr_cached = _NOT_INITIALIZED
+
+    def __call__(self, func):
+        self.func = func
+        self.__doc__ = func.__doc__
+        self.__module__ = func.__module__
+        return self  # Return the instance as a callable descriptor
+
+    def __set_name__(self, owner, name):
+        if self.attrname is None:
+            self.attrname = name
+        elif name != self.attrname:
+            raise TypeError(
+                "Cannot assign the same cached_property to two different names "
+                f"({self.attrname!r} and {name!r})."
+            )
+
+    def __get__(self, instance, owner=None):
+        print("__get__ called")
+        if instance is None:
+            return self
+
+        if self.attrname is None:
+            raise TypeError("Cannot use cached_property_dep instance without calling __set_name__ on it.")
+
+        invalid = False
+
+        # Check if the dependent value changed since we last checked it
+        dep_attr_current = getattr(instance, self.dep_attrname)
+
+        if dep_attr_current is not self._dep_attr_cached:
+            del self._dep_attr_cached
+            self._dep_attr_cached = dep_attr_current
+            invalid = True
+
+        val = self._attr_cached
+
+        if invalid or val is _NOT_FOUND:
+            val = self.func(instance)
+            del self._attr_cached
+            self._attr_cached = val
+
+        return val
+
+    __class_getitem__ = classmethod(GenericAlias)

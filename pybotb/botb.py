@@ -10,42 +10,7 @@ import pytz
 from typing import cast, Any, Callable, Dict, List, Optional, TypedDict, Union, Self
 from urllib.parse import quote, urlencode
 
-from .utils import Session, unroll_payload, int_list_to_sql
-
-# CODE NOTE:
-#
-# Regarding the dataclass classes: there is a fairly common pattern
-# we use to define a variable that clears the cache on another
-# cached property.
-#
-# The order of "@property define, then matching dataclass attribute
-# definition" is crucial. Explained with "aura" as an example:
-#
-# - The declaration of "aura" as a dataclass attribute is necessary
-#   so that it can still be set in the init function (which we use
-#   in BotBr.from_payload.
-#
-# - The @property define is used to clear the cache of some property
-#   that depends on the overwritten property (e.g. aura is used to
-#   calculate aura_url).
-#
-# - However, defining the property this way causes the property to
-#   become an attribute with its default value being a "property
-#   object"; then, dataclasses interprets it as a default value,
-#   and does not let us declare non-default values afterwards.
-#
-# - To avoid this, we have to move the attribute definition *below*
-#   the @property declaration, *and* set its default value to "field()"
-#   to override the default value set by the @property declaration.
-#
-# - The variable docstring is set in the overriding attribute declaration
-#   since Sphinx seems to look for it there.
-#
-# - The "internal storage" variable has a default set; otherwise, trying
-#   to perform an equality comparison between two objects fails with an
-#   AttributeError (honestly, this is probably a Python bug...)
-#
-# END CODE NOTE
+from .utils import Session, unroll_payload, int_list_to_sql, cached_property_dep
 
 #: Level-up point requirements for a BotBr.
 #:
@@ -113,32 +78,16 @@ class BotBr:
     Properties directly match API data, except where noted otherwise.
     """
 
-    #: Internal storage for aura field; we overload the aura property to provide
-    #: cache invalidation for aura_url.
-    _aura: str = field(default="", init=False, repr=False)
-
-    @property
-    def aura(self) -> str:
-        return self._aura
-
-    @aura.setter
-    def aura(self, aura: str):
-        self._aura = aura
-        try:
-            del self.aura_url
-        except AttributeError:
-            pass
-
     #: String representing the aura PNG name for this BotBr; usually the BotBr ID zero-
     #: padded to 8 characters.
     #:
     #: This is used to calculate the aura URL in :attr:`.BotBr.aura_url`.
-    aura: str = field()
+    aura: str
 
     #: Fallback color for the aura, as a hex value (#ffffff).
     aura_color: str
 
-    @cached_property
+    @property
     def aura_url(self) -> str:
         """
         URL to the aura PNG; calculated from :attr:`.BotBr.aura`.
@@ -174,30 +123,14 @@ class BotBr:
     #: likely of not much use to implementations.
     class_icon: str
 
-    #: Internal storage for create_date_str field; we overload the create_date_str
-    #: property to provide cache invalidation for create_date.
-    _create_date_str: str = field(default="", init=False, repr=False)
-
-    @property
-    def create_date_str(self) -> str:
-        return self._create_date_str
-
-    @create_date_str.setter
-    def create_date_str(self, create_date_str: str):
-        self._create_date_str = create_date_str
-        try:
-            del self.create_date
-        except AttributeError:
-            pass
-
     #: String representing the creation date of the BotBr's account, in YYYY-MM-DD
     #: format, in the US East Coast timezone (same as all other dates on-site).
     #:
     #: The creation date is also converted to a datetime for developer convenience;
     #: see :attr:`.BotBr.create_date`.
-    create_date_str: str = field()
+    create_date_str: str
 
-    @cached_property
+    @cached_property_dep("create_date_str")
     def create_date(self) -> datetime.datetime:
         """
         Account creation date as a datetime object.
@@ -212,31 +145,15 @@ class BotBr:
     #: The BotBr's ID.
     id: int
 
-    #: Internal storage for laston_date_str field; we overload the laston_date_str
-    #: property to provide cache invalidation for laston_date.
-    _laston_date_str: str = field(default="", init=False, repr=False)
-
-    @property
-    def laston_date_str(self) -> str:
-        return self._laston_date_str
-
-    @laston_date_str.setter
-    def laston_date_str(self, laston_date_str: str):
-        self._laston_date_str = laston_date_str
-        try:
-            del self.laston_date
-        except AttributeError:
-            pass
-
     #: String representing the date on which the BotBr was last seen on the site, in
     #: YYYY-MM-DD format, in the US East Coast timezone (same as all other dates on-
     #: site).
     #:
     #: The last-on date is also converted to a datetime for developer convenience;
     #: see :attr:`.BotBr.laston_date`.
-    laston_date_str: str = field()
+    laston_date_str: str
 
-    @cached_property
+    @cached_property_dep("laston_date_str")
     def laston_date(self) -> datetime.datetime:
         """
         Last seen date as a datetime object.
@@ -279,22 +196,6 @@ class BotBr:
 
     #: The URL to the BotBr's profile.
     profile_url: str
-
-    #: Two-letter country code of the BotBr. For a list, see TODO.
-    #:
-    #: Note that this property is not typically returned by the API; it is only
-    #: available through entry author listings. You can use
-    #: `:py:method:.BotB.botbr_fill_country` to fetch it on a regular BotBr object
-    #: (that function also supports bulk operations).
-    country_code: str = "xx"
-
-    #: Name of the BotBr's country. For a list, see TODO.
-    #:
-    #: Note that this property is not typically returned by the API; it is only
-    #: available through entry author listings. You can use
-    #: `:py:method:.BotB.botbr_fill_country` to fetch it on a regular BotBr object
-    #: (that function also supports bulk operations).
-    country_name: str = "unknown"
 
     #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
     #: value that isn't exposed through the class.
@@ -432,22 +333,6 @@ class Battle:
     #: String containing names of battle hosts, joined with a " + " sign.
     hosts_names: str
 
-    #: Internal storage for type field; we overload the type property
-    #: to provide cache invalidation for is_xhb.
-    _type: int = field(default="", init=False, repr=False)
-
-    @property
-    def type(self) -> int:
-        return self._type
-
-    @type.setter
-    def type(self, type: int):
-        self._type = type
-        try:
-            del self.is_xhb
-        except AttributeError:
-            pass
-
     #: The battle's "type" attribute.
     #:
     #: The value is set to 3 for XHBs; all other values are majors. Known
@@ -462,7 +347,7 @@ class Battle:
     #: an XHB.
     type: int = field()
 
-    @cached_property
+    @property
     def is_xhb(self) -> bool:
         """
         Whether or not this battle is an X Hour Battle/minor battle.
@@ -471,24 +356,17 @@ class Battle:
         """
         return self.type == 3
 
+    @property
+    def is_major(self) -> bool:
+        """
+        Whether or not this battle is a major battle.
+
+        :returns: True if the battle is a major, False otherwise.
+        """
+        return self.type != 3
+
     #: Amount of entries submitted.
     entry_count: int
-
-    #: Internal storage for start_str field; we overload the start_str
-    #: property to provide cache invalidation for start_date.
-    _start_str: str = field(default="", init=False, repr=False)
-
-    @property
-    def start_str(self) -> str:
-        return self._start_str
-
-    @start_str.setter
-    def start_str(self, start_str: str):
-        self._start_str = start_str
-        try:
-            del self.start
-        except AttributeError:
-            pass
 
     #: String representing the date and time at which the battle starts, in
     #: YYYY-MM-DD HH:MM:SS format, in the US East Coast timezone (same as all
@@ -496,9 +374,9 @@ class Battle:
     #:
     #: The start date is also converted to a datetime for developer convenience;
     #: see :attr:`.BotBr.start_date`.
-    start_str: str = field()
+    start_str: str
 
-    @cached_property
+    @cached_property_dep("start_str")
     def start(self) -> datetime.datetime:
         """
         Last seen date as a datetime object.
@@ -509,22 +387,6 @@ class Battle:
             tzinfo=pytz.timezone("America/Los_Angeles")
         )
 
-    #: Internal storage for end_str field; we overload the end_str
-    #: property to provide cache invalidation for end_date.
-    _end_str: str = field(default="", init=False, repr=False)
-
-    @property
-    def end_str(self) -> str:
-        return self._end_str
-
-    @end_str.setter
-    def end_str(self, end_str: str):
-        self._end_str = end_str
-        try:
-            del self.end
-        except AttributeError:
-            pass
-
     #: String representing the date and time at which the battle ends, in
     #: YYYY-MM-DD HH:MM:SS format, in the US East Coast timezone (same as all
     #: other dates on the site).
@@ -533,7 +395,7 @@ class Battle:
     #: see :attr:`.BotBr.end_date`.
     end_str: str = field()
 
-    @cached_property
+    @cached_property_dep("end_str")
     def end(self) -> datetime.datetime:
         """
         Last seen date as a datetime object.
@@ -606,22 +468,6 @@ class Entry:
     #: The battle this entry was submitted to.
     battle: Battle
 
-    #: Internal storage for datetime_str field; we overload the datetime_str
-    #: property to provide cache invalidation for datetime.
-    _datetime_str: str = field(default="", init=False, repr=False)
-
-    @property
-    def datetime_str(self) -> str:
-        return self._datetime_str
-
-    @datetime_str.setter
-    def datetime_str(self, datetime_str: str):
-        self._datetime_str = datetime_str
-        try:
-            del self.datetime
-        except AttributeError:
-            pass
-
     #: String representing the submission date of this entry in YYYY-MM-DD
     #: HH:MM:SS format, in the US East Coast timezone (same as all other dates
     #: on the site).
@@ -630,7 +476,7 @@ class Entry:
     #: see :attr:`.Entry.datetime`.
     datetime_str: str = field()
 
-    @cached_property
+    @cached_property_dep("datetime")
     def datetime(self) -> datetime.datetime:
         """
         Account creation date as a datetime object.
@@ -878,24 +724,8 @@ class Tag:
 class Palette:
     """Color palette."""
 
-    #: Internal storage for id field; we overload the id property to provide
-    #: cache invalidation for css_url.
-    _id: int = field(default="", init=False, repr=False)
-
-    @property
-    def id(self) -> int:
-        return self._id
-
-    @id.setter
-    def id(self, id: int):
-        self._id = id
-        try:
-            del self.css_url
-        except AttributeError:
-            pass
-
     #: ID of the palette.
-    id: int = field()
+    id: int
 
     #: Title of the palette.
     title: str
@@ -909,7 +739,7 @@ class Palette:
     #: green and blue respectively.
     #:
     #: This variable is derived from the ID.
-    @cached_property
+    @property
     def css_url(self):
         return f"https://battleofthebits.com/disk/palette_vars/{self.id}"
 
@@ -975,31 +805,15 @@ class Playlist:
     #: in seconds.
     runtime: int
 
-    #: Internal storage for date_create_str field; we overload the date_create_str
-    #: property to provide cache invalidation for date_create.
-    _date_create_str: str = field(default="", init=False, repr=False)
-
-    @property
-    def date_create_str(self) -> str:
-        return self._date_create_str
-
-    @date_create_str.setter
-    def date_create_str(self, date_create_str: str):
-        self._date_create_str = date_create_str
-        try:
-            del self.date_create
-        except AttributeError:
-            pass
-
     #: String representing the date on which the BotBr was last seen on the site, in
     #: YYYY-MM-DD format, in the US East Coast timezone (same as all other dates on-
     #: site).
     #:
     #: The last-on date is also converted to a datetime for developer convenience;
     #: see :attr:`.BotBr.date_create`.
-    date_create_str: str = field()
+    date_create_str: str
 
-    @cached_property
+    @cached_property_dep("date_create_str")
     def date_create(self) -> datetime.datetime:
         """
         Last seen date as a datetime object.
@@ -1011,22 +825,6 @@ class Playlist:
             tzinfo=pytz.timezone("America/Los_Angeles")
         )
 
-    #: Internal storage for date_modify_str field; we overload the date_modify_str
-    #: property to provide cache invalidation for date_modify.
-    _date_modify_str: str = field(default="", init=False, repr=False)
-
-    @property
-    def date_modify_str(self) -> str:
-        return self._date_modify_str
-
-    @date_modify_str.setter
-    def date_modify_str(self, date_modify_str: str):
-        self._date_modify_str = date_modify_str
-        try:
-            del self.date_modify
-        except AttributeError:
-            pass
-
     #: String representing the date on which the BotBr was last seen on the site, in
     #: YYYY-MM-DD format, in the US East Coast timezone (same as all other dates on-
     #: site).
@@ -1035,7 +833,7 @@ class Playlist:
     #: see :attr:`.BotBr.date_modify`.
     date_modify_str: str = field()
 
-    @cached_property
+    @cached_property_dep("date_modify_str")
     def date_modify(self) -> datetime.datetime:
         """
         Last seen date as a datetime object.
