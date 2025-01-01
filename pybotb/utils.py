@@ -150,7 +150,6 @@ class cached_property_dep:
             )
 
     def __get__(self, instance, owner=None):
-        print("__get__ called")
         if instance is None:
             return self
 
