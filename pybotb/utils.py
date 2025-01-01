@@ -35,7 +35,7 @@ class Session(requests.Session):
         super().__init__(*args, **kwargs)
         self.mount("http://", HTTPAdapter(max_retries=REQ_RETRIES))
         self.mount("https://", HTTPAdapter(max_retries=REQ_RETRIES))
-        self.set_user_agent("pybotb v{VERSION}")
+        self.set_user_agent("pybotb {VERSION}")
 
     def get(self, url: str, retry_count: int = 0, **kwargs):  # typing: ignore
         """Wrapper for self._s.get with better retry handling."""
