@@ -66,6 +66,17 @@ def test_botb_api_botbr(botb):
     assert botb.botbr_get_id_for_username("uart") == 16333
     assert botb.botbr_load_for_username("uart") == botb.botbr_load(16333)
 
+    ret = botb.entry_get_favorites(73426)
+    assert ret
+    for fav in ret:
+        assert fav.entry_id == 73426
+
+    ret = botb.botbr_get_favorites(16333)
+    assert ret
+    for fav in ret:
+        assert fav.botbr_id == 16333
+
+
 def test_botb_api_favorite(botb):
     """Test favorite API methods."""
 
@@ -81,17 +92,6 @@ def test_botb_api_favorite(botb):
 
     # List
     ret = botb.favorite_list(sort="id", desc=True, filters={"botbr_id": 16333})
-    assert ret
-    for fav in ret:
-        assert fav.botbr_id == 16333
-
-    # pyBotB convenience wrappers
-    ret = botb.favorite_list_for_entry(73426)
-    assert ret
-    for fav in ret:
-        assert fav.entry_id == 73426
-
-    ret = botb.favorite_list_for_botbr(16333)
     assert ret
     for fav in ret:
         assert fav.botbr_id == 16333
@@ -127,9 +127,9 @@ def test_botb_api_palette(botb):
     """Test palette API methods."""
 
     # Load
-    ret = botb.palette_load(1)
+    ret = botb.palette_load(2640)
     assert ret
-    assert ret.id == 1
+    assert ret.id == 2640
 
     # Random
     ret = botb.palette_random()
@@ -137,13 +137,93 @@ def test_botb_api_palette(botb):
     assert type(ret) == pybotb.botb.Palette
 
     # List
-    ret = botb.palette_list(sort="id", desc=True, filters={"entry_id": 71306})
+    ret = botb.palette_list(sort="id", desc=True, filters={"color1": "e4fefe"})
     assert ret
     for palette in ret:
-        assert palette.entry_id == 71306
+        assert palette.color1 == "e4fefe"
+
+    # Current default
+    ret = botb.palette_current_default()
+    assert ret
+    assert type(ret) == pybotb.botb.Palette
 
     # pyBotB convenience wrappers
-    ret = botb.palette_list_for_entry(73426)
+    ret = botb.palette_list_for_botbr(16333)
     assert ret
     for palette in ret:
-        assert palette.entry_id == 73426
+        assert palette.botbr_id == 16333
+
+
+def test_botb_api_playlist(botb):
+    """Test playlist API methods."""
+
+    # Load
+    ret = botb.playlist_load(100)
+    assert ret
+    assert ret.id == 100
+
+    # Random
+    ret = botb.playlist_random()
+    assert ret
+    assert type(ret) == pybotb.botb.Playlist
+
+    # List
+    ret = botb.playlist_list(sort="id", desc=True)
+    assert ret
+
+    # List entries for playlist
+    ret_ids = botb.playlist_get_entry_ids(115)
+
+    # TODO uncomment once conditionals are fixed
+    #ret = botb.playlist_get_entries(115)
+    #assert ret
+    #for e in ret:
+    #	assert type(e) == pybotb.botb.Entry
+    #	assert e.id in ret_ids
+
+
+def test_botb_api_entry(botb):
+    """Test entry API methods."""
+
+    # Load
+    ret = botb.entry_load(73426)
+    assert ret
+    assert ret.id == 73426
+
+    # Random
+    ret = botb.entry_random()
+    assert ret
+    assert type(ret) == pybotb.botb.Entry
+
+    # List
+    ret = botb.entry_list(sort="id", desc=True)
+    assert ret
+
+    # List playlists for entry
+    ret_ids = botb.entry_get_playlist_ids(66768)
+
+    # TODO uncomment once conditionals are fixed
+    #ret = botb.entry_get_playlists(66768)
+    #assert ret
+    #for e in ret:
+    #	assert type(e) == pybotb.botb.Entry
+    #	assert e.id in ret_ids
+
+
+def test_botb_api_battle(botb):
+    """Test battle API methods."""
+
+    # Load
+    ret = botb.battle_load(9514)
+    assert ret
+    assert ret.id == 9514
+
+    # Random
+    ret = botb.battle_random()
+    assert ret
+    assert type(ret) == pybotb.botb.Battle
+
+    # List
+    ret = botb.battle_list(sort="id", desc=True)
+    assert ret
+

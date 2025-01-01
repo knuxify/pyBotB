@@ -10,28 +10,13 @@ import pytz
 from typing import cast, Any, Callable, Dict, List, Optional, TypedDict, Union, Self
 from urllib.parse import quote, urlencode
 
-from .utils import Session, unroll_payload
-
-#: Parser to use for BeautifulSoup; see:
-#: https://www.crummy.com/software/BeautifulSoup/bs4/doc/#installing-a-parser
-SOUP_PARSER = "lxml"
-
-class BadgeLevel(Enum):
-    """Enum for BotBr badge_levels values."""
-
-    #: No badge unlocked (< 7 progress points; not actually used on-site.)
-    NOT_UNLOCKED = 0
-    #: Regular badge unlocked (7 progress points).
-    REGULAR = 1
-    #: Bronze badge unlocked (28 progress points).
-    BRONZE = 2
-    #: Silver badge unlocked (56 progress points).
-    SILVER = 3
-    #: Gold badge unlocked (100 progress points).
-    GOLD = 4
-
+from .utils import Session, unroll_payload, int_list_to_sql
 
 # CODE NOTE:
+#
+# Regarding the dataclass classes: there is a fairly common pattern
+# we use to define a variable that clears the cache on another
+# cached property.
 #
 # The order of "@property define, then matching dataclass attribute
 # definition" is crucial. Explained with "aura" as an example:
@@ -103,6 +88,21 @@ LEVELS = [
     1060222,
     99999999,
 ]
+
+
+class BadgeLevel(Enum):
+    """Enum for BotBr badge_levels values."""
+
+    #: No badge unlocked (< 7 progress points; not actually used on-site.)
+    NOT_UNLOCKED = 0
+    #: Regular badge unlocked (7 progress points).
+    REGULAR = 1
+    #: Bronze badge unlocked (28 progress points).
+    BRONZE = 2
+    #: Silver badge unlocked (56 progress points).
+    SILVER = 3
+    #: Gold badge unlocked (100 progress points).
+    GOLD = 4
 
 
 @dataclass
@@ -333,11 +333,19 @@ class BotBr:
     def __repr__(self):
         return f"<BotBr: {self.name} (Level {self.level} {self.botbr_class}, ID {self.id})>"
 
+    def __str__(self):
+        return self.__repr__()
+
 
 class Medium(Enum):
-    """Enum for different medium types; not to be confused with formats."""
+    """
+    Enum for different medium types; not to be confused with formats.
 
-    INVALID = 0
+    The numerical values are pyBotB-specific; on the Entry, object, this value
+    is derived from "medium_audio", "medium_visual", etc. properties of the API.
+    """
+
+    UNKNOWN = 0
     AUDIO = 1
     VISUAL = 2
     # TODO
@@ -396,6 +404,12 @@ class Format:
         ret._raw_payload = payload.copy()
 
         return ret
+
+    def __repr__(self):
+        return f"<Format: {self.title} ({self.token}) (ID {self.id})>"
+
+    def __str__(self):
+        return self.__repr__()
 
 
 @dataclass
@@ -537,6 +551,39 @@ class Battle:
     # TODO check if this is returned
     disable_penalty: bool = False
 
+    #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
+    #: value that isn't exposed through the class.
+    _raw_payload: Optional[dict] = field(default=None, repr=False)
+
+    @classmethod
+    def from_payload(cls, payload: dict) -> Self:
+        """
+        Convert a JSON payload (provided as a dict) into a BotBr object.
+
+        :param payload: Dictionary containing the JSON payload.
+        :returns: The resulting BotBr object.
+        """
+        payload_parsed = payload.copy()
+
+        ret = unroll_payload(
+            cls,
+            payload_parsed,
+            payload_to_attr={
+                "start": "start_str",
+                "end": "end_str",
+            },
+        )
+        ret._raw_payload = payload.copy()
+
+        return ret
+
+    def __repr__(self):
+        return f"<Battle: {self.title} (Is XHB: {self.is_xhb}, hosted by: {self.hosts_names}, ID {self.id})>"
+
+    def __str__(self):
+        return self.__repr__()
+
+
 @dataclass
 class Entry:
     """Represents a battle entry."""
@@ -632,12 +679,6 @@ class Entry:
     #: Whether the entry is late or not.
     late: bool
 
-    #: Relative player URL for the entry ("/player/Entry/{id}" format).
-    #:
-    #: Present for all entries, including those without a valid player (i.e.
-    #: non-audio entries).
-    listen_url: str
-
     #: Medium of the entry; see :py:enum:`.Medium` for possible values.
     #:
     #: This is consolidated from "medium_*" variables ("medium_audio", "medium_visual",
@@ -650,31 +691,12 @@ class Entry:
     #: ???
     q: int
 
-    #: Rank of the entry.
-    rank: int
-
-    #: English plural suffix for the rank (e.g "st" for 1st, "nd" for 2nd, etc.)
-    rank_suffix: str
-
-    #: HTML representation of rank; likely not of use to implementations.
-    rank_display: str
-
-    #: Score of the entry.
-    score: float
-
-    #: HTML representation of score; likely not of use to implementations.
-    score_display: str
-
     #: The entry's title.
     title: str
 
     #: Relative URL to the entry thumbnail; empty for entries without a
     #: thumbnail (i.e. non-visual entries).
     thumbnail_url: str
-
-    #: HTML representation of trophies this entry has.
-    #: TODO: make a custom prop out of this
-    trophy_display: str
 
     #: Amount of votes this entry got.
     votes: int
@@ -684,6 +706,12 @@ class Entry:
     #: Only present for audio entries.
     length: float = 0
 
+    #: Relative player URL for the entry ("/player/Entry/{id}" format).
+    #:
+    #: Present for audio and visual entries, except for some non-audio entries
+    #: with archives or other filetypes. Also not present for non-rendered entries.
+    listen_url: Optional[str] = None
+
     #: Direct URL to the source file of an audio entry.
     #:
     #: None for non-audio entries. (The API returns False for non-audio entries;
@@ -692,6 +720,37 @@ class Entry:
 
     #: YouTube URL for this entry, if any.
     youtube_url: Optional[str] = None
+
+    #: Rank of the entry.
+    #:
+    #: Only present once the battle is over; returns None otherwise.
+    rank: Optional[int] = None
+
+    #: English plural suffix for the rank (e.g "st" for 1st, "nd" for 2nd, etc.)
+    #:
+    #: If the battle is not over yet, this is an empty string.
+    rank_suffix: str = ""
+
+    #: HTML representation of rank; likely not of use to implementations.
+    #:
+    #: If the battle is not over yet, this is "?/{entry count}".
+    rank_display: str = ""
+
+    #: Score of the entry.
+    #:
+    #: Only present once the battle is over; returns None otherwise.
+    score: Optional[float] = None
+
+    #: HTML representation of score; likely not of use to implementations.
+    #:
+    #: If the battle is not over yet, this is an empty string.
+    score_display: str = ""
+
+    #: HTML representation of trophies this entry has.
+    #:
+    #: If the battle is not over yet, this is None.
+    #: TODO: make a custom prop out of this
+    trophy_display: Optional[str] = None
 
     #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
     #: value that isn't exposed through the class.
@@ -707,13 +766,35 @@ class Entry:
         """
         payload_parsed = payload.copy()
 
-        ret = unroll_payload(cls, payload_parsed)
+        if "medium_audio" in payload_parsed:
+            payload_parsed["medium"] = Medium.AUDIO
+        elif "medium_visual" in payload_parsed:
+            payload_parsed["medium"] = Medium.VISUAL
+        else:
+            payload_parsed["medium"] = Medium.UNKNOWN
+
+        # HACK: some old entries from 2009 are broken and have null posts
+        # (e.g. all entries in https://battleofthebits.com/arena/Battle/335/MainScreen/themed+allgear+-+internet+power+struggle).
+        # Add "posts" = 0 manually if that happens.
+        if "posts" not in payload_parsed:
+            payload_parsed["posts"] = 0
+
+        ret = unroll_payload(
+            cls,
+            payload_parsed,
+            payload_to_attr={
+                "datetime": "datetime_str",
+            },
+        )
         ret._raw_payload = payload.copy()
 
         return ret
 
     def __repr__(self):
         return f'<Entry: "{self.name}" by {self.botbr.name} (Format {self.format_token}, Battle {self.battle.name}, ID {self.id})>'
+
+    def __str__(self):
+        return self.__repr__()
 
 
 @dataclass
@@ -752,6 +833,9 @@ class Favorite:
     def __repr__(self):
         return f"<Favorite on entry {self.entry_id} by BotBr {self.botbr_id} (ID {self.id})>"
 
+    def __str__(self):
+        return self.__repr__()
+
 
 @dataclass
 class Tag:
@@ -765,6 +849,10 @@ class Tag:
 
     #: The tag applied to the entry.
     tag: str
+
+    #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
+    #: value that isn't exposed through the class.
+    _raw_payload: Optional[dict] = field(default=None, repr=False)
 
     @classmethod
     def from_payload(cls, payload: dict) -> Self:
@@ -780,7 +868,250 @@ class Tag:
         return ret
 
     def __repr__(self):
-        return f"<Tag \"{self.tag}\" on entry {self.entry_id} (ID {self.id})>"
+        return f'<Tag "{self.tag}" on entry {self.entry_id} (ID {self.id})>'
+
+    def __str__(self):
+        return self.__repr__()
+
+
+@dataclass
+class Palette:
+    """Color palette."""
+
+    #: Internal storage for id field; we overload the id property to provide
+    #: cache invalidation for css_url.
+    _id: int = field(default="", init=False, repr=False)
+
+    @property
+    def id(self) -> int:
+        return self._id
+
+    @id.setter
+    def id(self, id: int):
+        self._id = id
+        try:
+            del self.css_url
+        except AttributeError:
+            pass
+
+    #: ID of the palette.
+    id: int = field()
+
+    #: Title of the palette.
+    title: str
+
+    #: URL to the palette CSS.
+    #:
+    #: This is a CSS file hosted on battleofthebits.com which contains a
+    #: :root directive with the colors as CSS variables. Each color has its
+    #: hex code stored in the --colorX variable, with the individual RGB
+    #: components stored in --colorX_r, --colorX_g and --colorX_b for red,
+    #: green and blue respectively.
+    #:
+    #: This variable is derived from the ID.
+    @cached_property
+    def css_url(self):
+        return f"https://battleofthebits.com/disk/palette_vars/{self.id}"
+
+    #: ID of the BotBr who made the palette.
+    botbr_id: int
+
+    #: Color 1 (text), in hex format without "#" prefix.
+    color1: str
+
+    #: Color 2 (link), in hex format without "#" prefix.
+    color2: str
+
+    #: Color 3 (button), in hex format without "#" prefix.
+    color3: str
+
+    #: Color 4 (box), in hex format without "#" prefix.
+    color4: str
+
+    #: Color 5 (bottom), in hex format without "#" prefix.
+    color5: str
+
+    #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
+    #: value that isn't exposed through the class.
+    _raw_payload: Optional[dict] = field(default=None, repr=False)
+
+    @classmethod
+    def from_payload(cls, payload: dict) -> Self:
+        """
+        Convert a JSON payload (provided as a dict) into a Favorite object.
+
+        :param payload: Dictionary containing the JSON payload.
+        :returns: The resulting Favorite object.
+        """
+        ret = unroll_payload(cls, payload)
+        ret._raw_payload = payload.copy()
+
+        return ret
+
+    def __repr__(self):
+        return f'<Palette "{self.title}" by BotBr {self.botbr_id} (ID {self.id})>'
+
+    def __str__(self):
+        return self.__repr__()
+
+
+@dataclass
+class Playlist:
+    """A playlist containing entries."""
+
+    #: ID of the playlist.
+    id: int
+
+    #: ID of the BotBr who made the playlist.
+    botbr_id: int
+
+    #: Title of the playlist
+    title: str
+
+    #: Amount of entries in the playlist.
+    count: int
+
+    #: Total runtime (sum of lengths) of entries with lengths in this playlist,
+    #: in seconds.
+    runtime: int
+
+    #: Internal storage for date_create_str field; we overload the date_create_str
+    #: property to provide cache invalidation for date_create.
+    _date_create_str: str = field(default="", init=False, repr=False)
+
+    @property
+    def date_create_str(self) -> str:
+        return self._date_create_str
+
+    @date_create_str.setter
+    def date_create_str(self, date_create_str: str):
+        self._date_create_str = date_create_str
+        try:
+            del self.date_create
+        except AttributeError:
+            pass
+
+    #: String representing the date on which the BotBr was last seen on the site, in
+    #: YYYY-MM-DD format, in the US East Coast timezone (same as all other dates on-
+    #: site).
+    #:
+    #: The last-on date is also converted to a datetime for developer convenience;
+    #: see :attr:`.BotBr.date_create`.
+    date_create_str: str = field()
+
+    @cached_property
+    def date_create(self) -> datetime.datetime:
+        """
+        Last seen date as a datetime object.
+
+        For the raw string, see
+        :attr:`.BotBr.date_create_str`.
+        """
+        return datetime.strptime(self.date_create_str, "%Y-%m-%d").replace(
+            tzinfo=pytz.timezone("America/Los_Angeles")
+        )
+
+    #: Internal storage for date_modify_str field; we overload the date_modify_str
+    #: property to provide cache invalidation for date_modify.
+    _date_modify_str: str = field(default="", init=False, repr=False)
+
+    @property
+    def date_modify_str(self) -> str:
+        return self._date_modify_str
+
+    @date_modify_str.setter
+    def date_modify_str(self, date_modify_str: str):
+        self._date_modify_str = date_modify_str
+        try:
+            del self.date_modify
+        except AttributeError:
+            pass
+
+    #: String representing the date on which the BotBr was last seen on the site, in
+    #: YYYY-MM-DD format, in the US East Coast timezone (same as all other dates on-
+    #: site).
+    #:
+    #: The last-on date is also converted to a datetime for developer convenience;
+    #: see :attr:`.BotBr.date_modify`.
+    date_modify_str: str = field()
+
+    @cached_property
+    def date_modify(self) -> datetime.datetime:
+        """
+        Last seen date as a datetime object.
+
+        For the raw string, see
+        :attr:`.BotBr.date_modify_str`.
+        """
+        return datetime.strptime(self.date_modify_str, "%Y-%m-%d").replace(
+            tzinfo=pytz.timezone("America/Los_Angeles")
+        )
+
+    #: Description of the playlist.
+    description: Optional[str] = None
+
+    #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
+    #: value that isn't exposed through the class.
+    _raw_payload: Optional[dict] = field(default=None, repr=False)
+
+    @classmethod
+    def from_payload(cls, payload: dict) -> Self:
+        """
+        Convert a JSON payload (provided as a dict) into a Favorite object.
+
+        :param payload: Dictionary containing the JSON payload.
+        :returns: The resulting Favorite object.
+        """
+        ret = unroll_payload(
+            cls,
+            payload,
+            payload_to_attr={
+                "date_create": "date_create_str",
+                "date_modify": "date_modify_str",
+            },
+        )
+        ret._raw_payload = payload.copy()
+
+        return ret
+
+    def __repr__(self):
+        return f'<Playlist "{self.title}" by BotBr {self.botbr_id} ({self.count} items, ID {self.id})>'
+
+    def __str__(self):
+        return self.__repr__()
+
+
+@dataclass
+class PlaylistToEntry:
+    """
+    Link between playlist and entry returned by the playlist_to_entry API.
+    """
+
+    #: ID of the playlist
+    playlist_id: int
+
+    #: ID of the entry
+    entry_id: int
+
+    @classmethod
+    def from_payload(cls, payload: dict) -> Self:
+        """
+        Convert a JSON payload (provided as a dict) into a PlaylistToEntry object.
+
+        :param payload: Dictionary containing the JSON payload.
+        :returns: The resulting Favorite object.
+        """
+        ret = unroll_payload(cls, payload)
+
+        return ret
+
+    def __repr__(self):
+        return (
+            f"<PlaylistToEntry: playlist {self.playlist_id} <-> entry {self.entry_id}>"
+        )
+
+    def __str__(self):
+        return self.__repr__()
 
 
 @dataclass(slots=True)
@@ -827,8 +1158,8 @@ class BotB:
         """
         Load information about an object with the given type and ID.
 
-        This function is primarily used internally; for API users, use one of
-        the load_{object_type}_* functions instead.
+        This function is primarily used internally; for API users, use one of the
+        load_{object_type}_* functions instead.
 
         :param object_type: Object type string.
         :param object_id: ID of the object.
@@ -863,19 +1194,18 @@ class BotB:
         """
         Load information about an object with the given type and ID.
 
-        This function is primarily used internally; for API users, use one of
-        the load_{object_type}_* functions instead.
+        This function is primarily used internally; for API users, use one of the
+        load_{object_type}_* functions instead.
 
         :param object_type: Object type string.
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
         :param desc: If True, returns items in descending order.
         :param sort: Object property to sort by.
-        :param filters: Dictionary with object property as the key and filter value
-                        as the value. Note that filters are deprecated; conditions
-                        should be used instead.
+        :param filters: Dictionary with object property as the key and filter value as
+            the value. Note that filters are deprecated; conditions should be used
+            instead.
         :param conditions: List of Condition objects containing list conditions.
-
         :returns: A dictionary containing the JSON result, or None if not found.
         :raises ConnectionError: On connection error.
         """
@@ -900,7 +1230,6 @@ class BotB:
             url += "?" + urlencode(params)
 
         if conditions:
-            print({"conditions": [c.to_dict() for c in conditions]})
             ret = self._s.post(
                 url, json={"conditions": [c.to_dict() for c in conditions]}
             )
@@ -918,12 +1247,32 @@ class BotB:
         except:
             raise ConnectionError(ret.text)
 
+    def _random(self, object_type: str) -> Union[dict, None]:
+        """
+        Get random item of the given object type.
+
+        This function is primarily used internally; for API users, use one of the
+        get_{object_type}_* functions instead.
+
+        :param object_type: Object type string.
+        :returns: A dictionary containing the JSON result, or None if not found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._s.get(f"https://battleofthebits.com/api/v1/{object_type}/random")
+        if ret.status_code == 404:
+            return None
+
+        try:
+            return ret.json()[0]
+        except:
+            raise ConnectionError(ret.text)
+
     def _search(self, object_type: str, query: str) -> Union[dict, None]:
         """
         Search for objects with the given object type using the provided query.
 
-        The query is checked against the title/name of the object; if an object
-        matches, it is included in the results.
+        The query is checked against the title/name of the object; if an object matches,
+        it is included in the results.
 
         :param object_type: Object type string.
         :param query: String to query for.
@@ -943,32 +1292,12 @@ class BotB:
         except:
             raise ConnectionError(ret.text)
 
-    def _random(self, object_type: str) -> Union[dict, None]:
-        """
-        Get random item of the given object type.
-
-        This function is primarily used internally; for API users, use one of
-        the get_{object_type}_* functions instead.
-
-        :param object_type: Object type string.
-        :returns: A dictionary containing the JSON result, or None if not found.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._s.get(f"https://battleofthebits.com/api/v1/{object_type}/random")
-        if ret.status_code == 404:
-            return None
-
-        try:
-            return ret.json()[0]
-        except:
-            raise ConnectionError(ret.text)
-
     def list_iterate_over_pages(
         self,
         list_func: Callable,
-        sort: str,
         max_items: int = 0,
         desc: bool = False,
+        sort: Optional[str] = None,
         filters: Optional[Dict[str, str]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[Any]:
@@ -977,16 +1306,15 @@ class BotB:
         required to make sure the results are returned correctly.
 
         :param list_func: List function, e.g. `:py:method:.BotB.botbr_list`, etc.
-        :param sort: Object property to sort by.
         :param max_items: Limit how many items to fetch. 0 means no limit.
         :param desc: If True, returns items in descending order.
-        :param filters: Dictionary with object property as the key and filter value
-                        as the value. Note that filters are deprecated; conditions
-                        should be used instead.
+        :param sort: Object property to sort by. Recommended.
+        :param filters: Dictionary with object property as the key and filter value as
+            the value. Note that filters are deprecated; conditions should be used
+            instead.
         :param conditions: List of Condition objects containing list conditions.
-
         :returns: A list of all found objects, converted to the type returned by
-                  list_func.
+            list_func.
         :raises ConnectionError: On connection error.
         """
         out = []
@@ -1010,12 +1338,15 @@ class BotB:
             if (max_items > 0 and n_items < max_items) or len(ret) < 250:
                 break
 
+        return out
+
     # BotBr
 
     def botbr_load(self, botbr_id: int) -> Union[BotBr, None]:
         """
         Load a BotBr's info by their ID.
 
+        :param botbr_id: ID of the botbr to load.
         :returns: BotBr object representing the user, or None if the user is not found.
         :raises ConnectionError: On connection error.
         """
@@ -1024,23 +1355,6 @@ class BotB:
             return None
 
         return BotBr.from_payload(ret)
-
-    def botbr_search(self, query: str) -> List[BotBr]:
-        """
-        Search for BotBrs that match the given query.
-
-        :param query: Search query for the search.
-        :returns: List of BotBr objects representing the search results. If the search
-            returned no results, the list will be empty.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._search("botbr", query)
-
-        out = []
-        for payload in ret:
-            out.append(BotBr.from_payload(payload))
-
-        return out
 
     def botbr_list(
         self,
@@ -1095,6 +1409,23 @@ class BotB:
 
         return BotBr.from_payload(ret)
 
+    def botbr_search(self, query: str) -> List[BotBr]:
+        """
+        Search for BotBrs that match the given query.
+
+        :param query: Search query for the search.
+        :returns: List of BotBr objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._search("botbr", query)
+
+        out = []
+        for payload in ret:
+            out.append(BotBr.from_payload(payload))
+
+        return out
+
     def botbr_get_id_for_username(self, username: str) -> Union[int, None]:
         """
         Get the ID of a BotBr by their username.
@@ -1127,58 +1458,86 @@ class BotB:
 
         return ret[0]
 
+    def botbr_get_favorites(
+        self,
+        botbr_id: int,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, str]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[Favorite]:
+        """
+        List all favorites given by the BotBr with the given ID.
+
+        Convinience shorthand for `:py:method:.BotB.favorite_list` which pre-fills the
+        filters to search for the entry and automatically aggregates all results pages.
+
+        :param entry_id: ID of the entry to get favorites for.
+        :param desc: If True, returns items in descending order.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value as
+            the value. Note that filters are deprecated; conditions should be used
+            instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of Favorite objects representing the search results. If the
+            search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        _filters = {"botbr_id": botbr_id}
+        if filters:
+            _filters = filters | {_filters}
+
+        return self.list_iterate_over_pages(
+            self.favorite_list,
+            sort=sort or "id",
+            desc=desc,
+            filters=_filters,
+            conditions=conditions,
+        )
+
     #
     # Entry
     #
 
-    def entry_fillup(self, entry: Entry, authors_full: bool = False):
+    def entry_get_author_botbrs(self, entry: Entry) -> List[BotBr]:
         """
-        Common function that performs a few "fill-ups" for fetched entries, according to
-        user parameters.
-
-        In most cases, you will not need to use this directly; all of the relevant API
-        methods provide the same parameters, and pass them to this function. It is left
-        public primarily for documentation.
-
-        Note that this function performs all operations in-place.
-
-        :param authors_full: Fetch full information about all authors. By default, the
-            BotB API only returns limited information about entry authors other than the
-            main submitter. If you need the full BotBr data of *all* entry
-            collaborators, setting this to True will cause pyBotB to send out a fetch to
-            get the info of every BotBr in the authors list, and fill in the data.
+        Fetch full information about all authors. By default, the
+        BotB API only returns limited information about entry authors other than the
+        main submitter. If you need the full BotBr data of *all* entry
+        collaborators, setting this to True will cause pyBotB to send out a fetch to
+        get the info of every BotBr in the authors list, and fill in the data.
         :returns: The modified Entry object. Note that this function also performs all
             operations in-place.
         :raises ConnectionError: On connection error (if authors_full is True).
         """
-        if authors_full:
-            author_ids = set([a.id for a in entry.authors])
+        out = {}
 
-            botbrs = []
-            i = author_ids
-            n = 0
-            while i > 0:
-                botbrs += self.botbr_list(
-                    page_number=n,
-                    page_length=i % 250,
+        author_ids = set([a.id for a in entry.authors[1:]])
+
+        botbrs = dict(
+            [
+                (b.id, b)
+                for b in self.list_iterate_over_pages(
+                    self.botbr_list,
                     sort="id",
-                    conditions=[
-                        Condition("id", "IN", "(" + ",".join(author_ids) + ")")
-                    ],
+                    conditions=[Condition("id", "IN", int_list_to_sql(author_ids))],
                 )
-                i -= 250
-                n += 1
+            ]
+        )
 
-            # TODO match botbr to id
+        i = 0
+        for author in entry.authors:
+            if author.id in botbrs:
+                entry.authors[i] = botbrs[author.id]
+            i += 1
 
         return entry
 
-    def entry_load(
-        self, entry_id: int, authors_full: bool = False
-    ) -> Union[Entry, None]:
+    def entry_load(self, entry_id: int) -> Union[Entry, None]:
         """
         Load an entry's info by its ID.
 
+        :param entry_id: ID of the entry to load.
         :param authors_full: Fetch full information about all authors.
         :returns: entry object representing the user, or None if the user is not found.
         :raises ConnectionError: On connection error.
@@ -1188,23 +1547,6 @@ class BotB:
             return None
 
         return Entry.from_payload(ret)
-
-    def entry_search(self, query: str) -> List[Entry]:
-        """
-        Search for entries that match the given query.
-
-        :param query: Search query for the search.
-        :returns: List of entry objects representing the search results. If the search
-            returned no results, the list will be empty.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._search("entry", query)
-
-        out = []
-        for payload in ret:
-            out.append(Entry.from_payload(payload))
-
-        return out
 
     def entry_list(
         self,
@@ -1259,6 +1601,220 @@ class BotB:
 
         return Entry.from_payload(ret)
 
+    def entry_search(self, query: str) -> List[Entry]:
+        """
+        Search for entries that match the given query.
+
+        :param query: Search query for the search.
+        :returns: List of entry objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._search("entry", query)
+
+        out = []
+        for payload in ret:
+            out.append(Entry.from_payload(payload))
+
+        return out
+
+    def entry_get_tags(
+        self,
+        entry_id: int,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, str]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[Tag]:
+        """
+        List all tags given to entry with the given ID.
+
+        Convinience shorthand for `:py:method:.BotB.tag_list` which pre-fills the
+        filters to search for the entry and automatically aggregates all results pages.
+
+        :param entry_id: ID of the entry to get tags for.
+        :param desc: If True, returns items in descending order.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value as
+            the value. Note that filters are deprecated; conditions should be used
+            instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of Tag objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        _filters = {"entry_id": entry_id}
+        if filters:
+            _filters = filters | {_filters}
+
+        return self.list_iterate_over_pages(
+            self.tag_list,
+            sort=sort or "id",
+            desc=desc,
+            filters=_filters,
+            conditions=conditions,
+        )
+
+    def entry_get_playlist_ids(self, entry_id: int) -> List[int]:
+        """
+        Get a list containing the playlist IDs of playlists that this entry
+        has been added to.
+
+        To get a list of Playlist objects, see `:method:.BotBr.entry_get_playlists`.
+
+        :param entry_id: ID of the entry to load the playlists of.
+        :returns: List of playlist IDs.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self.list_iterate_over_pages(
+            self.playlist_to_entry_list, filters={"entry_id": entry_id}
+        )
+        if not ret:
+            return []
+
+        return [p.playlist_id for p in ret]
+
+    def entry_get_playlists(self, entry_id: int) -> List[Playlist]:
+        """
+        Get a list of playlists that this entry has been added to.
+
+        :param entry_id: ID of the playlist to load the entries of.
+        :returns: List of Playlist objects.
+        :raises ConnectionError: On connection error.
+        """
+        playlist_ids = self.entry_get_playlist_ids(entry_id)
+
+        condition = Condition("playlist_id", "IN", int_list_to_sql(playlist_ids))
+
+        return self.list_iterate_over_pages(
+            self.playlist_list, sort="id", conditions=[condition]
+        )
+
+    def entry_get_favorites(
+        self,
+        entry_id: int,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, str]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[Favorite]:
+        """
+        List all favorites for the entry with the given ID.
+
+        Convinience shorthand for `:py:method:.BotB.favorite_list` which pre-fills the
+        filters to search for the entry and automatically aggregates all results pages.
+
+        :param entry_id: ID of the entry to get favorites for.
+        :param desc: If True, returns items in descending order.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value as
+            the value. Note that filters are deprecated; conditions should be used
+            instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of Favorite objects representing the search results. If the
+            search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        _filters = {"entry_id": entry_id}
+        if filters:
+            _filters = filters | {_filters}
+
+        return self.list_iterate_over_pages(
+            self.favorite_list,
+            sort=sort or "id",
+            desc=desc,
+            filters=_filters,
+            conditions=conditions,
+        )
+
+    #
+    # Battles
+    #
+
+    def battle_load(self, battle_id: int) -> Union[Battle, None]:
+        """
+        Load a battle's info by its ID.
+
+        :param botbr_id: ID of the battle to load.
+        :returns: Battle object representing the user, or None if the user is not found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._load("battle", battle_id)
+        if not ret:
+            return None
+
+        return Battle.from_payload(ret)
+
+    def battle_list(
+        self,
+        page_number: int = 0,
+        page_length: int = 25,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, str]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[Battle]:
+        """
+        Search for battles that match the given query.
+
+        For a list of supported filter/condition properties, see :py:class:`.Battle`.
+
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :param desc: If True, returns items in descending order.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of Battle objects representing the search results. If the
+                  search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._list(
+            "battle",
+            page_number=page_number,
+            page_length=page_length,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+        )
+
+        out = []
+        for payload in ret:
+            out.append(Battle.from_payload(payload))
+
+        return out
+
+    def battle_random(self) -> Battle:
+        """
+        Get a random battle.
+
+        :returns: Battle object representing the battle.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._random("battle")
+
+        return Battle.from_payload(ret)
+
+    def battle_search(self, query: str) -> List[Battle]:
+        """
+        Search for battles that match the given query.
+
+        :param query: Search query for the search.
+        :returns: List of Battle objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._search("battle", query)
+
+        out = []
+        for payload in ret:
+            out.append(Battle.from_payload(payload))
+
+        return out
+
     #
     # Favorites
     #
@@ -1267,7 +1823,7 @@ class BotB:
         """
         Load a favorite's info by its ID.
 
-        :param authors_full: Fetch full information about all authors.
+        :param botbr_id: ID of the favorite to load.
         :returns: Favorite object representing the user, or None if the user is not
             found.
         :raises ConnectionError: On connection error.
@@ -1331,82 +1887,6 @@ class BotB:
 
         return Favorite.from_payload(ret)
 
-    def favorite_list_for_entry(
-        self,
-        entry_id: int,
-        desc: bool = False,
-        sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
-        conditions: Optional[List[Condition]] = None,
-    ) -> List[Favorite]:
-        """
-        List all favorites for the entry with the given ID.
-
-        Convinience shorthand for `:py:method:.BotB.favorite_list` which pre-fills
-        the filters to search for the entry and automatically aggregates all
-        results pages.
-
-        :param entry_id: ID of the entry to get favorites for.
-        :param desc: If True, returns items in descending order.
-        :param sort: Object property to sort by.
-        :param filters: Dictionary with object property as the key and filter value
-                        as the value. Note that filters are deprecated; conditions
-                        should be used instead.
-        :param conditions: List of Condition objects containing list conditions.
-        :returns: List of Favorite objects representing the search results. If the
-                  search returned no results, the list will be empty.
-        :raises ConnectionError: On connection error.
-        """
-        _filters = {"entry_id": entry_id}
-        if filters:
-            _filters = filters | {_filters}
-
-        return self.list_iterate_over_pages(
-            self.favorite_list,
-            sort=sort or "id",
-            desc=desc,
-            filters=_filters,
-            conditions=conditions,
-        )
-
-    def favorite_list_for_botbr(
-        self,
-        botbr_id: int,
-        desc: bool = False,
-        sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
-        conditions: Optional[List[Condition]] = None,
-    ) -> List[Favorite]:
-        """
-        List all favorites given by the BotBr with the given ID.
-
-        Convinience shorthand for `:py:method:.BotB.favorite_list` which pre-fills
-        the filters to search for the entry and automatically aggregates all
-        results pages.
-
-        :param entry_id: ID of the entry to get favorites for.
-        :param desc: If True, returns items in descending order.
-        :param sort: Object property to sort by.
-        :param filters: Dictionary with object property as the key and filter value
-                        as the value. Note that filters are deprecated; conditions
-                        should be used instead.
-        :param conditions: List of Condition objects containing list conditions.
-        :returns: List of Favorite objects representing the search results. If the
-                  search returned no results, the list will be empty.
-        :raises ConnectionError: On connection error.
-        """
-        _filters = {"botbr_id": botbr_id}
-        if filters:
-            _filters = filters | {_filters}
-
-        return self.list_iterate_over_pages(
-            self.favorite_list,
-            sort=sort or "id",
-            desc=desc,
-            filters=_filters,
-            conditions=conditions,
-        )
-
     #
     # Tags
     #
@@ -1415,9 +1895,8 @@ class BotB:
         """
         Load a tag's info by its ID.
 
-        :param authors_full: Fetch full information about all authors.
-        :returns: Tag object representing the user, or None if the user is not
-            found.
+        :param botbr_id: ID of the tag to load.
+        :returns: Tag object representing the user, or None if the user is not found.
         :raises ConnectionError: On connection error.
         """
         ret = self._load("tag", tag_id)
@@ -1479,45 +1958,383 @@ class BotB:
 
         return Tag.from_payload(ret)
 
-    # TODO: tag/cloud_by_substring/XXX
+    def tag_search(self, query: str) -> List[Tag]:
+        """
+        Search for tags that match the given query.
 
-    def tag_list_for_entry(
+        :param query: Search query for the search.
+        :returns: List of Tag objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._search("tag", query)
+
+        out = []
+        for payload in ret:
+            out.append(Tag.from_payload(payload))
+
+        return out
+
+    #
+    # Palettes
+    #
+
+    def palette_load(self, palette_id: int) -> Union[Palette, None]:
+        """
+        Load a palette's info by its ID.
+
+        :param botbr_id: ID of the palette to load.
+        :returns: Palette object representing the user, or None if the user is not
+            found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._load("palette", palette_id)
+        if not ret:
+            return None
+
+        return Palette.from_payload(ret)
+
+    def palette_list(
         self,
-        entry_id: int,
+        page_number: int = 0,
+        page_length: int = 25,
         desc: bool = False,
         sort: Optional[str] = None,
         filters: Optional[Dict[str, str]] = None,
         conditions: Optional[List[Condition]] = None,
-    ) -> List[Tag]:
+    ) -> List[Palette]:
         """
-        List all tags for the entry with the given ID.
+        Search for palettes that match the given query.
 
-        Convinience shorthand for `:py:method:.BotB.tag_list` which pre-fills
-        the filters to search for the entry and automatically aggregates all
-        results pages.
+        For a list of supported filter/condition properties, see :py:class:`.Palette`.
 
-        :param entry_id: ID of the entry to get tags for.
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
         :param desc: If True, returns items in descending order.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value
                         as the value. Note that filters are deprecated; conditions
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
-        :returns: List of Tag objects representing the search results. If the
+        :returns: List of Palette objects representing the search results. If the
                   search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
-        _filters = {"entry_id": entry_id}
+        ret = self._list(
+            "palette",
+            page_number=page_number,
+            page_length=page_length,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+        )
+
+        out = []
+        for payload in ret:
+            out.append(Palette.from_payload(payload))
+
+        return out
+
+    def palette_random(self) -> Palette:
+        """
+        Get a random palette.
+
+        :returns: Palette object representing the palette.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._random("palette")
+
+        return Palette.from_payload(ret)
+
+    def palette_list_for_botbr(
+        self,
+        botbr_id: int,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, str]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[Palette]:
+        """
+        List all palettes created by the BotBr with the given ID.
+
+        Convinience shorthand for `:py:method:.BotB.palette_list` which pre-fills the
+        filters to search for the entry and automatically aggregates all results pages.
+
+        :param entry_id: ID of the entry to get palettes for.
+        :param desc: If True, returns items in descending order.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value as
+            the value. Note that filters are deprecated; conditions should be used
+            instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of Palette objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        _filters = {"botbr_id": botbr_id}
         if filters:
             _filters = filters | {_filters}
 
         return self.list_iterate_over_pages(
-            self.tag_list,
+            self.palette_list,
             sort=sort or "id",
             desc=desc,
             filters=_filters,
             conditions=conditions,
         )
+
+    def palette_current_default(self) -> Palette:
+        """
+        Get the current default on-site palette.
+
+        :returns: Palette object representing the current default palette.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._s.get(f"https://battleofthebits.com/api/v1/palette/current_default")
+        if ret.status_code != 200:
+            raise ConnectionError(f"{ret.status_code}: {ret.text}")
+
+        try:
+            palette_json = ret.json()[0]
+        except:
+            raise ConnectionError(ret.text)
+
+        return Palette.from_payload(palette_json)
+
+    #
+    # Formats
+    #
+
+    def format_load(self, format_id: int) -> Union[Format, None]:
+        """
+        Load a format's info by its ID.
+
+        :param botbr_id: ID of the format to load.
+        :returns: Format object representing the user, or None if the user is not found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._load("format", format_id)
+        if not ret:
+            return None
+
+        return Format.from_payload(ret)
+
+    def format_list(
+        self,
+        page_number: int = 0,
+        page_length: int = 25,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, str]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[Format]:
+        """
+        Search for formats that match the given query.
+
+        For a list of supported filter/condition properties, see :py:class:`.Format`.
+
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :param desc: If True, returns items in descending order.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of Format objects representing the search results. If the
+                  search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._list(
+            "format",
+            page_number=page_number,
+            page_length=page_length,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+        )
+
+        out = []
+        for payload in ret:
+            out.append(Format.from_payload(payload))
+
+        return out
+
+    def format_random(self) -> Format:
+        """
+        Get a random format.
+
+        :returns: Format object representing the format.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._random("format")
+
+        return Format.from_payload(ret)
+
+    #
+    # Playlists
+    #
+
+    def playlist_load(self, playlist_id: int) -> Union[Playlist, None]:
+        """
+        Load a playlist's info by its ID.
+
+        :param playlist_id: ID of the playlist to load.
+        :returns: Playlist object representing the user, or None if the user is not
+            found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._load("playlist", playlist_id)
+        if not ret:
+            return None
+
+        return Playlist.from_payload(ret)
+
+    def playlist_list(
+        self,
+        page_number: int = 0,
+        page_length: int = 25,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, str]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[Playlist]:
+        """
+        Search for playlists that match the given query.
+
+        For a list of supported filter/condition properties, see :py:class:`.Playlist`.
+
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :param desc: If True, returns items in descending order.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of Playlist objects representing the search results. If the
+                  search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._list(
+            "playlist",
+            page_number=page_number,
+            page_length=page_length,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+        )
+
+        out = []
+        for payload in ret:
+            out.append(Playlist.from_payload(payload))
+
+        return out
+
+    def playlist_random(self) -> Playlist:
+        """
+        Get a random playlist.
+
+        :returns: Playlist object representing the playlist.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._random("playlist")
+
+        return Playlist.from_payload(ret)
+
+    def playlist_to_entry_list(
+        self,
+        page_number: int = 0,
+        page_length: int = 25,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, str]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[PlaylistToEntry]:
+        """
+        Perform a query against the playlist-to-entry table.
+
+        In most cases, you don't need to use this function directly; instead,
+        use `:py:method:.BotB.playlist_get_entries` or
+        `:py:method:.BotB.entry_get_playlists`.
+
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :param desc: If True, returns items in descending order.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of Playlist objects representing the search results. If the
+                  search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._list(
+            "playlist_to_entry",
+            page_number=page_number,
+            page_length=page_length,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+        )
+
+        out = []
+        for payload in ret:
+            out.append(PlaylistToEntry.from_payload(payload))
+
+        return out
+
+    def playlist_get_entry_ids(self, playlist_id: int) -> List[int]:
+        """
+        Get a list containing the entry IDs of the playlist with the given ID,
+        in the order that they appear in the playlist.
+
+        To get a list of entry objects, see `:method:.BotBr.playlist_get_entries`.
+
+        :param playlist_id: ID of the playlist to load the entries of.
+        :returns: List of entry IDs.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self.list_iterate_over_pages(
+            self.playlist_to_entry_list, filters={"playlist_id": playlist_id}
+        )
+        if not ret:
+            return []
+
+        return [p.entry_id for p in ret]
+
+    def playlist_get_entries(self, playlist_id: int, max_items: int = 0) -> List[Entry]:
+        """
+        Get a list containing a the entries in the playlist with the given ID,
+        in the order that they appear in the playlist.
+
+        :param playlist_id: ID of the playlist to load the entries of.
+        :returns: List of entry IDs.
+        :raises ConnectionError: On connection error.
+        """
+        entry_ids = self.playlist_get_entry_ids(playlist_id)
+
+        condition = Condition("entry_id", "IN", int_list_to_sql(entry_ids))
+
+        entries = dict(
+            [
+                (e.id, e)
+                for e in self.list_iterate_over_pages(
+                    self.entry_list, sort="id", conditions=[condition]
+                )
+            ]
+        )
+
+        ret = []
+        for entry_id in entry_ids:
+            ret.append(entries[entry_id])
+
+        return ret
 
 
 class BotBHacks(BotB):
