@@ -567,7 +567,7 @@ class Entry:
     #: see :attr:`.Entry.datetime`.
     datetime_str: str = field()
 
-    @cached_property_dep("datetime")
+    @cached_property_dep("datetime_str")
     def datetime(self) -> datetime.datetime:
         """
         Account creation date as a datetime object.
