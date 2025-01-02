@@ -53,13 +53,12 @@ def test_botb_api_botbr(botb):
     assert ret
     assert len(ret) == 128
 
-    # TODO
     ret = botb.botbr_list(conditions=[
         Condition("level", ">", "10")
     ])
     assert ret
-    #for b in ret:
-    #	assert b.level > 10
+    for b in ret:
+        assert b.level > 10
 
     # pyBotB convenience wrappers
     assert botb.botbr_get_id_for_username("uart") == 16333
@@ -125,7 +124,7 @@ def test_botb_api_entry(botb):
     # List playlists for entry
     ret_ids = botb.entry_get_playlist_ids(66768)
 
-    # TODO uncomment once conditionals are fixed
+    # TODO
     #ret = botb.entry_get_playlists(66768)
     #assert ret
     #for e in ret:
@@ -282,12 +281,11 @@ def test_botb_api_playlist(botb):
     # List entries for playlist
     ret_ids = botb.playlist_get_entry_ids(115)
 
-    # TODO uncomment once conditionals are fixed
-    #ret = botb.playlist_get_entries(115)
-    #assert ret
-    #for e in ret:
-    #	assert type(e) == pybotb.botb.Entry
-    #	assert e.id in ret_ids
+    ret = botb.playlist_get_entries(115)
+    assert ret
+    for e in ret:
+        assert type(e) == pybotb.botb.Entry
+        assert e.id in ret_ids
 
 
 def test_botb_api_tag(botb):

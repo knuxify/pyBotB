@@ -131,11 +131,6 @@ def unroll_payload(
     except TypeError as e:
         raise TypeError(f"Payload missing required property {e}. {payload_parsed}")
 
-
-def int_list_to_sql(int_list: List[int]) -> str:
-    """Convert a list of ints to an SQL list as a string, to be passed to Conditionals."""
-    return "(" + ",".join([str(i) for i in int_list]) + ")"
-
 _NOT_FOUND = object()
 _NOT_INITIALIZED = object()
 

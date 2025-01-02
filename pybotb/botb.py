@@ -9,9 +9,10 @@ from enum import Enum, IntEnum
 import pytz
 from typing import cast, Any, Callable, Dict, List, Optional, TypedDict, Union, Self
 from urllib.parse import quote, urlencode
+import json
 
 from . import VERSION
-from .utils import Session, unroll_payload, int_list_to_sql, cached_property_dep
+from .utils import Session, unroll_payload, cached_property_dep
 
 #: Level-up point requirements for a BotBr.
 #:
@@ -1311,6 +1312,19 @@ class BotB:
 
         url = f"https://battleofthebits.com/api/v1/{object_type}/list/{page_number}/{page_length}"
         params = {}
+
+        if conditions:
+            i = 0
+            for cond in conditions:
+                params[f"conditions[{i}][property]"] = cond.property
+                params[f"conditions[{i}][operator]"] = cond.operator
+                if type(cond.operand) in (list, tuple):
+                    params[f"conditions[{i}][operand][]"] = json.dumps(cond.operand)
+                else:
+                    params[f"conditions[{i}][operand]"] = cond.operand
+                params[f"conditions[{i}][key]"] = cond.property
+                i += 1
+
         if desc:
             params["desc"] = str(desc).lower()
         if sort:
@@ -1323,14 +1337,12 @@ class BotB:
             filter_str = filter_str[1:]
             params["filters"] = filter_str
 
-        if params:
-            url += "?" + urlencode(params)
-
         if conditions:
-            ret = self._s.post(
-                url, json={"conditions": [c.to_dict() for c in conditions]}
-            )
+            params_form = dict([(k, (None, v)) for k, v in params.items()])
+            ret = self._s.post(url, data=params_form)
         else:
+            if params:
+                url += "?" + urlencode(params)
             ret = self._s.get(url)
 
         if ret.status_code == 400 and "Please RTFM" in ret.text:
@@ -1792,7 +1804,7 @@ class BotB:
         """
         playlist_ids = self.entry_get_playlist_ids(entry_id)
 
-        condition = Condition("playlist_id", "IN", int_list_to_sql(playlist_ids))
+        condition = Condition("playlist_id", "IN", playlist_ids)
 
         return self.list_iterate_over_pages(
             self.playlist_list, sort="id", conditions=[condition]
