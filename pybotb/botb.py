@@ -5,7 +5,7 @@ from functools import cached_property
 import dataclasses
 from dataclasses import dataclass, field
 import datetime
-from enum import Enum
+from enum import Enum, IntEnum
 import pytz
 from typing import cast, Any, Callable, Dict, List, Optional, TypedDict, Union, Self
 from urllib.parse import quote, urlencode
@@ -56,7 +56,7 @@ LEVELS = [
 ]
 
 
-class BadgeLevel(Enum):
+class BadgeLevel(IntEnum):
     """Enum for BotBr badge_levels values."""
 
     #: No badge unlocked (< 7 progress points; not actually used on-site.)
@@ -774,6 +774,192 @@ class Favorite:
         return self.__repr__()
 
 
+class GroupID(IntEnum):
+    """
+    Forum group IDs.
+    """
+
+    #: "Bulletins" group.
+    BULLETINS = 1
+
+    #: "News" group.
+    NEWS = 2
+
+    #: ??? ("elders only, n00b" when trying to access)
+    INTERNAL = 3
+
+    #: "Entries" group (entry comments).
+    ENTRIES = 4
+
+    #: "Battles" group (battle comments).
+    BATTLES = 5
+
+    #: "Photos" group.
+    PHOTOS = 6
+
+    #: "BotB update log" group.
+    #:
+    #: Redirects to https://battleofthebits.com/academy/Updates/ on-site;
+    #: appears to be unused (conains one post with ID 804 which also redirects
+    #: there).
+    UPDATE_LOG = 7
+
+    #: "n00b s0z" group.
+    N00B_S0Z = 8
+
+    #: "mail" group.
+    MAIL = 9
+
+    #: "Bug Reports and Feature Requests" group.
+    BUG_REPORTS_AND_FEATURE_REQUESTS = 10
+
+    #: "Smeesh" group.
+    SMEESH = 11
+
+    #: "Project Dev" group.
+    PROJECT_DEV = 12
+
+    #: "BotBrs" group (BotBr profile comments).
+    BOTBRS = 13
+
+    #: "Lyceum" group (discussions for lyceum entries).
+    LYCEUM = 14
+
+
+@dataclass
+class GroupThread:
+    """
+    A group thread - i.e. a thread in a forum group, containing posts.
+
+    Forum threads and BotBr/entry/battle comment threads are all group threads.
+    """
+
+    #: ID of the group thread.
+    id: int
+
+    #: ID of the forum group this thread belongs to; see `:enum:.GroupID` for
+    #: possible values.
+    group_id: GroupID
+
+    #: Title of the thread.
+    title: str
+
+    #: Timestamp of the first post in the thread, in YYYY-MM-DD HH:MM:SS format,
+    #: in the US East Coast timezone (same as all other dates on the site).
+    first_post_timestamp_str: str
+
+    @cached_property_dep("first_post_timestamp_str")
+    def first_post_timestamp(self) -> datetime.datetime:
+        """
+        First post's timestamp as a datetime object.
+
+        For the raw string, see :attr:`.BotBr.first_post_timestamp_str`.
+        """
+        return datetime.strptime(self.first_post_timestamp_str, "%Y-%m-%d %H:%M:%S").replace(
+            tzinfo=pytz.timezone("America/Los_Angeles")
+        )
+
+    #: Timestamp of the last post in the thread, in YYYY-MM-DD HH:MM:SS format,
+    #: in the US East Coast timezone (same as all other dates on the site).
+    #:
+    #: None if the thread only contains one post.
+    last_post_timestamp_str: Optional[str] = None
+
+    @cached_property_dep("last_post_timestamp_str")
+    def last_post_timestamp(self) -> Optional[datetime.datetime]:
+        """
+        Last post's timestamp as a datetime object.
+
+        None if the thread only contains one post.
+
+        For the raw string, see :attr:`.BotBr.last_post_timestamp_str`.
+        """
+        if self.last_post_timestamp_str is None:
+            return None
+
+        return datetime.strptime(self.last_post_timestamp_str, "%Y-%m-%d %H:%M:%S").replace(
+            tzinfo=pytz.timezone("America/Los_Angeles")
+        )
+
+    #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
+    #: value that isn't exposed through the class.
+    _raw_payload: Optional[dict] = field(default=None, repr=False)
+
+    @classmethod
+    def from_payload(cls, payload: dict) -> Self:
+        """
+        Convert a JSON payload (provided as a dict) into a Favorite object.
+
+        :param payload: Dictionary containing the JSON payload.
+        :returns: The resulting Favorite object.
+        """
+        ret = unroll_payload(cls, payload, payload_to_attr={
+            "first_post_timestamp": "first_post_timestamp_str",
+            "last_post_timestamp": "last_post_timestamp_str",
+        })
+        ret._raw_payload = payload.copy()
+
+        return ret
+
+    def __repr__(self):
+        return f"<GroupThread: {self.title} (ID {self.id})>"
+
+    def __str__(self):
+        return self.__repr__()
+
+
+@dataclass
+class LyceumArticle:
+    """Represents an article on the Lyceum."""
+
+    #: ID of the article.
+    id: int
+
+    #: Title of the article.
+    title: str
+
+    #: URL of the article.
+    profile_url: str
+
+    @property
+    def url(self) -> str:
+        """Shorthand for `:attr:.profile_url`."""
+        return self.profile_url
+
+    @url.setter
+    def url(self, url: str):
+        self.profile_url = url
+
+    #: The raw text of the article in Firki markup.
+    text_firki: str
+
+    #: The raw text of the article, stripped of Firki markup.
+    text_stripped: str
+
+    #: Amount of views this article has.
+    views: int
+
+    @classmethod
+    def from_payload(cls, payload: dict) -> Self:
+        """
+        Convert a JSON payload (provided as a dict) into a PlaylistToEntry object.
+
+        :param payload: Dictionary containing the JSON payload.
+        :returns: The resulting Favorite object.
+        """
+        ret = unroll_payload(cls, payload)
+
+        return ret
+
+    def __repr__(self):
+        return (
+            f"<LyceumArticle: {self.title} (ID: {self.id})>"
+        )
+
+    def __str__(self):
+        return self.__repr__()
+
+
 @dataclass
 class Tag:
     """A tag on an entry."""
@@ -1257,6 +1443,7 @@ class BotB:
         """
         Load a BotBr's info by their ID.
 
+        :api: /api/v1/botbr/load
         :param botbr_id: ID of the botbr to load.
         :returns: BotBr object representing the user, or None if the user is not found.
         :raises ConnectionError: On connection error.
@@ -1281,6 +1468,7 @@ class BotB:
 
         For a list of supported filter/condition properties, see :py:class:`.BotBr`.
 
+        :api: /api/v1/botbr/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
         :param desc: If True, returns items in descending order.
@@ -1313,6 +1501,7 @@ class BotB:
         """
         Get a random BotBr.
 
+        :api: /api/v1/botbr/random
         :returns: BotBr object representing the user.
         :raises ConnectionError: On connection error.
         """
@@ -1324,6 +1513,7 @@ class BotB:
         """
         Search for BotBrs that match the given query.
 
+        :api: /api/v1/botbr/search
         :param query: Search query for the search.
         :returns: List of BotBr objects representing the search results. If the search
             returned no results, the list will be empty.
@@ -1369,21 +1559,19 @@ class BotB:
 
         return ret[0]
 
-    def botbr_get_favorites(
+    def botbr_get_favorite_entries(
         self,
         botbr_id: int,
         desc: bool = False,
         sort: Optional[str] = None,
         filters: Optional[Dict[str, str]] = None,
         conditions: Optional[List[Condition]] = None,
-    ) -> List[Favorite]:
+    ) -> List[Entry]:
         """
-        List all favorites given by the BotBr with the given ID.
+        List all entries favorited by the BotBr with the given ID.
 
-        Convinience shorthand for `:py:method:.BotB.favorite_list` which pre-fills the
-        filters to search for the entry and automatically aggregates all results pages.
-
-        :param entry_id: ID of the entry to get favorites for.
+        :api: /api/v1/entry/botbr_favorites_playlist
+        :param botbr_id: ID of the BotBr to get favorites for.
         :param desc: If True, returns items in descending order.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value as
@@ -1394,17 +1582,20 @@ class BotB:
             search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
-        _filters = {"botbr_id": botbr_id}
-        if filters:
-            _filters = filters | {_filters}
+        ret = self._s.get(f"https://battleofthebits.com/api/v1/entry/botbr_favorites_playlist/{botbr_id}")
 
-        return self.list_iterate_over_pages(
-            self.favorite_list,
-            sort=sort or "id",
-            desc=desc,
-            filters=_filters,
-            conditions=conditions,
-        )
+        if ret.status_code != 200:
+            raise ConnectionError(f"{ret.status_code}: {ret.text}")
+
+        try:
+            entries = ret.json()
+        except:
+            raise ConnectionError(ret.text)
+
+        out = []
+        for e in entries:
+            out.append(Entry.from_payload(e))
+        return out
 
     def botbr_get_palettes(
         self,
@@ -1451,8 +1642,8 @@ class BotB:
         """
         Load an entry's info by its ID.
 
+        :api: /api/v1/entry/load
         :param entry_id: ID of the entry to load.
-        :param authors_full: Fetch full information about all authors.
         :returns: entry object representing the user, or None if the user is not found.
         :raises ConnectionError: On connection error.
         """
@@ -1476,6 +1667,7 @@ class BotB:
 
         For a list of supported filter/condition properties, see :py:class:`.Entry`.
 
+        :api: /api/v1/entry/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
         :param desc: If True, returns items in descending order.
@@ -1508,6 +1700,7 @@ class BotB:
         """
         Get a random entry.
 
+        :api: /api/v1/entry/random
         :returns: entry object representing the user.
         :raises ConnectionError: On connection error.
         """
@@ -1519,6 +1712,7 @@ class BotB:
         """
         Search for entries that match the given query.
 
+        :api: /api/v1/entry/search
         :param query: Search query for the search.
         :returns: List of entry objects representing the search results. If the search
             returned no results, the list will be empty.
@@ -1649,7 +1843,8 @@ class BotB:
         """
         Load a battle's info by its ID.
 
-        :param botbr_id: ID of the battle to load.
+        :api: /api/v1/battle/load
+        :param battle_id: ID of the battle to load.
         :returns: Battle object representing the user, or None if the user is not found.
         :raises ConnectionError: On connection error.
         """
@@ -1673,6 +1868,7 @@ class BotB:
 
         For a list of supported filter/condition properties, see :py:class:`.Battle`.
 
+        :api: /api/v1/battle/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
         :param desc: If True, returns items in descending order.
@@ -1705,6 +1901,7 @@ class BotB:
         """
         Get a random battle.
 
+        :api: /api/v1/battle/random
         :returns: Battle object representing the battle.
         :raises ConnectionError: On connection error.
         """
@@ -1716,6 +1913,7 @@ class BotB:
         """
         Search for battles that match the given query.
 
+        :api: /api/v1/battle/search
         :param query: Search query for the search.
         :returns: List of Battle objects representing the search results. If the search
             returned no results, the list will be empty.
@@ -1729,6 +1927,29 @@ class BotB:
 
         return out
 
+    def battle_current(self) -> List[Battle]:
+        """
+        Get a list of upcoming and ongoing battles.
+
+        :api: /api/v1/battle/current
+        :returns: List of Battle objects representing the battles. If there are
+                  no upcoming/ongoing battles, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._s.get(f"https://battleofthebits.com/api/v1/battle/current")
+        if ret.status_code != 200:
+            raise ConnectionError(f"{ret.status_code}: {ret.text}")
+
+        try:
+            battles = ret.json()
+        except:
+            raise ConnectionError(ret.text)
+
+        out = []
+        for b in battles:
+            out.append(Battle.from_payload(b))
+        return out
+
     #
     # Favorites
     #
@@ -1737,7 +1958,8 @@ class BotB:
         """
         Load a favorite's info by its ID.
 
-        :param botbr_id: ID of the favorite to load.
+        :api: /api/v1/favorite/load
+        :param favorite_id: ID of the favorite to load.
         :returns: Favorite object representing the user, or None if the user is not
             found.
         :raises ConnectionError: On connection error.
@@ -1762,6 +1984,7 @@ class BotB:
 
         For a list of supported filter/condition properties, see :py:class:`.Favorite`.
 
+        :api: /api/v1/favorite/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
         :param desc: If True, returns items in descending order.
@@ -1794,12 +2017,105 @@ class BotB:
         """
         Get a random favorite.
 
+        :api: /api/v1/favorite/random
         :returns: Favorite object representing the favorite.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("favorite")
 
         return Favorite.from_payload(ret)
+
+    #
+    # Group threads
+    #
+
+    def group_thread_load(self, group_thread_id: int) -> Union[GroupThread, None]:
+        """
+        Load a group thread's info by its ID.
+
+        :api: /api/v1/group_thread/load
+        :param group_thread_id: ID of the group_thread to load.
+        :returns: GroupThread object representing the user, or None if the user is not found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._load("group_thread", group_thread_id)
+        if not ret:
+            return None
+
+        return GroupThread.from_payload(ret)
+
+    def group_thread_list(
+        self,
+        page_number: int = 0,
+        page_length: int = 25,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, str]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[GroupThread]:
+        """
+        Search for group threads that match the given query.
+
+        For a list of supported filter/condition properties, see :py:class:`.GroupThread`.
+
+        :api: /api/v1/group_thread/list
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :param desc: If True, returns items in descending order.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of GroupThread objects representing the search results. If the
+                  search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._list(
+            "group_thread",
+            page_number=page_number,
+            page_length=page_length,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+        )
+
+        out = []
+        for payload in ret:
+            out.append(GroupThread.from_payload(payload))
+
+        return out
+
+    def group_thread_random(self) -> GroupThread:
+        """
+        Get a random group thread.
+
+        :api: /api/v1/group_thread/random
+        :returns: GroupThread object representing the group_thread.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._random("group_thread")
+
+        return GroupThread.from_payload(ret)
+
+    def group_thread_search(self, query: str) -> List[GroupThread]:
+        """
+        Search for group threads that match the given query.
+
+        :api: /api/v1/group_thread/search
+        :param query: Search query for the search.
+        :returns: List of GroupThread objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._search("group_thread", query)
+
+        out = []
+        for payload in ret:
+            out.append(GroupThread.from_payload(payload))
+
+        return out
 
     #
     # Tags
@@ -1809,7 +2125,8 @@ class BotB:
         """
         Load a tag's info by its ID.
 
-        :param botbr_id: ID of the tag to load.
+        :api: /api/v1/tag/load
+        :param tag_id: ID of the tag to load.
         :returns: Tag object representing the user, or None if the user is not found.
         :raises ConnectionError: On connection error.
         """
@@ -1833,6 +2150,7 @@ class BotB:
 
         For a list of supported filter/condition properties, see :py:class:`.Tag`.
 
+        :api: /api/v1/tag/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
         :param desc: If True, returns items in descending order.
@@ -1865,6 +2183,7 @@ class BotB:
         """
         Get a random tag.
 
+        :api: /api/v1/tag/random
         :returns: Tag object representing the tag.
         :raises ConnectionError: On connection error.
         """
@@ -1876,6 +2195,7 @@ class BotB:
         """
         Search for tags that match the given query.
 
+        :api: /api/v1/tag/search
         :param query: Search query for the search.
         :returns: List of Tag objects representing the search results. If the search
             returned no results, the list will be empty.
@@ -1897,7 +2217,8 @@ class BotB:
         """
         Load a palette's info by its ID.
 
-        :param botbr_id: ID of the palette to load.
+        :api: /api/v1/palette/load
+        :param palette_id: ID of the palette to load.
         :returns: Palette object representing the user, or None if the user is not
             found.
         :raises ConnectionError: On connection error.
@@ -1922,6 +2243,7 @@ class BotB:
 
         For a list of supported filter/condition properties, see :py:class:`.Palette`.
 
+        :api: /api/v1/palette/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
         :param desc: If True, returns items in descending order.
@@ -1954,6 +2276,7 @@ class BotB:
         """
         Get a random palette.
 
+        :api: /api/v1/palette/random
         :returns: Palette object representing the palette.
         :raises ConnectionError: On connection error.
         """
@@ -1965,6 +2288,7 @@ class BotB:
         """
         Get the current default on-site palette.
 
+        :api: /api/v1/palette/current_default
         :returns: Palette object representing the current default palette.
         :raises ConnectionError: On connection error.
         """
@@ -1987,7 +2311,8 @@ class BotB:
         """
         Load a format's info by its ID.
 
-        :param botbr_id: ID of the format to load.
+        :api: /api/v1/format/load
+        :param format_id: ID of the format to load.
         :returns: Format object representing the user, or None if the user is not found.
         :raises ConnectionError: On connection error.
         """
@@ -2011,6 +2336,7 @@ class BotB:
 
         For a list of supported filter/condition properties, see :py:class:`.Format`.
 
+        :api: /api/v1/format/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
         :param desc: If True, returns items in descending order.
@@ -2043,6 +2369,7 @@ class BotB:
         """
         Get a random format.
 
+        :api: /api/v1/format/random
         :returns: Format object representing the format.
         :raises ConnectionError: On connection error.
         """
@@ -2058,6 +2385,7 @@ class BotB:
         """
         Load a playlist's info by its ID.
 
+        :api: /api/v1/playlist/load
         :param playlist_id: ID of the playlist to load.
         :returns: Playlist object representing the user, or None if the user is not
             found.
@@ -2083,6 +2411,7 @@ class BotB:
 
         For a list of supported filter/condition properties, see :py:class:`.Playlist`.
 
+        :api: /api/v1/playlist/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
         :param desc: If True, returns items in descending order.
@@ -2115,12 +2444,31 @@ class BotB:
         """
         Get a random playlist.
 
+        :api: /api/v1/playlist/random
         :returns: Playlist object representing the playlist.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("playlist")
 
         return Playlist.from_payload(ret)
+
+    def playlist_search(self, query: str) -> List[Playlist]:
+        """
+        Search for playlists that match the given query.
+
+        :api: /api/v1/playlist/search
+        :param query: Search query for the search.
+        :returns: List of Playlist objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._search("playlist", query)
+
+        out = []
+        for payload in ret:
+            out.append(Playlist.from_payload(payload))
+
+        return out
 
     def playlist_to_entry_list(
         self,
@@ -2138,6 +2486,7 @@ class BotB:
         use `:py:method:.BotB.playlist_get_entries` or
         `:py:method:.BotB.entry_get_playlists`.
 
+        :api: /api/v1/playlist_to_entry/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
         :param desc: If True, returns items in descending order.
@@ -2185,33 +2534,123 @@ class BotB:
 
         return [p.entry_id for p in ret]
 
-    def playlist_get_entries(self, playlist_id: int, max_items: int = 0) -> List[Entry]:
+    def playlist_get_entries(self, playlist_id: int) -> List[Entry]:
         """
         Get a list containing a the entries in the playlist with the given ID,
         in the order that they appear in the playlist.
 
+        :api: /api/v1/entry/playlist_playlist
         :param playlist_id: ID of the playlist to load the entries of.
         :returns: List of entry IDs.
         :raises ConnectionError: On connection error.
         """
-        entry_ids = self.playlist_get_entry_ids(playlist_id)
+        ret = self._s.get(f"https://battleofthebits.com/api/v1/entry/playlist_playlist/{playlist_id}")
 
-        condition = Condition("entry_id", "IN", int_list_to_sql(entry_ids))
+        if ret.status_code != 200:
+            raise ConnectionError(f"{ret.status_code}: {ret.text}")
 
-        entries = dict(
-            [
-                (e.id, e)
-                for e in self.list_iterate_over_pages(
-                    self.entry_list, sort="id", conditions=[condition]
-                )
-            ]
+        try:
+            entries = ret.json()
+        except:
+            raise ConnectionError(ret.text)
+
+        out = []
+        for e in entries:
+            out.append(Entry.from_payload(e))
+        return out
+
+    #
+    # Lyceum articles
+    #
+
+    def lyceum_article_load(self, lyceum_article_id: int) -> Union[LyceumArticle, None]:
+        """
+        Load a lyceum article's info by its ID.
+
+        :api: /api/v1/lyceum_article/load
+        :param lyceum_article_id: ID of the lyceum article to load.
+        :returns: LyceumArticle object representing the user, or None if the user is not
+            found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._load("lyceum_article", lyceum_article_id)
+        if not ret:
+            return None
+
+        return LyceumArticle.from_payload(ret)
+
+    def lyceum_article_list(
+        self,
+        page_number: int = 0,
+        page_length: int = 25,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, str]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[LyceumArticle]:
+        """
+        Search for lyceum articles that match the given query.
+
+        For a list of supported filter/condition properties, see :py:class:`.LyceumArticle`.
+
+        :api: /api/v1/lyceum_article/list
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :param desc: If True, returns items in descending order.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of LyceumArticle objects representing the search results. If the
+                  search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._list(
+            "lyceum_article",
+            page_number=page_number,
+            page_length=page_length,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
         )
 
-        ret = []
-        for entry_id in entry_ids:
-            ret.append(entries[entry_id])
+        out = []
+        for payload in ret:
+            out.append(LyceumArticle.from_payload(payload))
 
-        return ret
+        return out
+
+    def lyceum_article_random(self) -> LyceumArticle:
+        """
+        Get a random lyceum article.
+
+        :api: /api/v1/lyceum_article/random
+        :returns: LyceumArticle object representing the lyceum article.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._random("lyceum_article")
+
+        return LyceumArticle.from_payload(ret)
+
+    def lyceum_article_search(self, query: str) -> List[LyceumArticle]:
+        """
+        Search for lyceum articles that match the given query.
+
+        :api: /api/v1/lyceum_article/search
+        :param query: Search query for the search.
+        :returns: List of LyceumArticle objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._search("lyceum_article", query)
+
+        out = []
+        for payload in ret:
+            out.append(LyceumArticle.from_payload(payload))
+
+        return out
 
 
 class BotBHacks(BotB):
@@ -2225,3 +2664,4 @@ class BotBHacks(BotB):
     """
 
     # TODO: BotBr badge progress (botbr_get_badge_progress)
+

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 import dataclasses
 from functools import cached_property
-from enum import Enum
+from enum import Enum, IntEnum
 import requests
 from requests.adapters import HTTPAdapter, Retry
 from typing import Any, Type, List, Optional, cast
@@ -102,12 +102,19 @@ def unroll_payload(
         # Some types can be converted manually; others should be converted
         # by the function callers before calling.
         try:
+            is_intenum = issubclass(class_attr_type, IntEnum)
+        except TypeError:
+            is_intenum = False
+
+        try:
             is_enum = issubclass(class_attr_type, Enum)
         except TypeError:
             is_enum = False
 
-        if class_attr_type in (int, float, str) or is_enum:
+        if class_attr_type in (int, float, str) or (is_enum and not is_intenum):
             payload_parsed[class_attr] = class_attr_type(payload[payload_attr])
+        elif is_intenum:
+            payload_parsed[class_attr] = class_attr_type(int(payload[payload_attr]))
         elif class_attr_type == bool:
             val = payload[payload_attr]
             if type(val) == bool:
