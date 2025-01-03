@@ -10,6 +10,7 @@ import pytz
 from typing import cast, Any, Callable, Dict, List, Optional, TypedDict, Union, Self
 from urllib.parse import quote, urlencode
 import json
+import re
 
 try:  # Python >= 3.11
     from enum import StrEnum
@@ -245,7 +246,7 @@ class BotBr:
         return self.__repr__()
 
 
-class Medium(Enum):
+class Medium(StrEnum):
     """
     Enum for different medium types; not to be confused with formats.
 
@@ -253,9 +254,9 @@ class Medium(Enum):
     is derived from "medium_audio", "medium_visual", etc. properties of the API.
     """
 
-    OTHER = 0
-    AUDIO = 1
-    VISUAL = 2
+    OTHER = "other"
+    AUDIO = "audio"
+    VISUAL = "visual"
 
 
 @dataclass
@@ -307,7 +308,14 @@ class Format:
         :param payload: Dictionary containing the JSON payload.
         :returns: The resulting BotBr object.
         """
-        ret = unroll_payload(cls, payload)
+        payload_parsed = payload.copy()
+
+        # HACK: some maxfilesize values are malformed and have stray unicode characters.
+        # Extract just the number.
+        if type(payload["maxfilesize"]) == str:
+            payload_parsed["maxfilesize"] = int(''.join(re.findall(r'\d+', payload["maxfilesize"].strip())))
+
+        ret = unroll_payload(cls, payload_parsed)
         ret._raw_payload = payload.copy()
 
         return ret
@@ -767,8 +775,9 @@ class Entry:
         else:
             payload_parsed["medium"] = Medium.OTHER
 
-        # HACK: some old entries from 2009 are broken and have null posts
-        # (e.g. all entries in https://battleofthebits.com/arena/Battle/335/MainScreen/themed+allgear+-+internet+power+struggle).
+        # HACK: some old entries from 2009 don't have an attached comment thread,
+        # which causes the "posts" value to be missing
+        # (e.g. all entries in https://battleofthebits.com/arena/Battle/335).
         # Add "posts" = 0 manually if that happens.
         if "posts" not in payload_parsed:
             payload_parsed["posts"] = 0
@@ -2342,6 +2351,11 @@ class BotB:
                   search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
+        # HACK: Loading palette ID 79 crashes the API. Make sure we *don't* fetch it.
+        _conditions = [Condition("id", "<>", 79)]
+        if conditions:
+            _conditions = conditions + _conditions
+
         ret = self._list(
             "palette",
             page_number=page_number,
@@ -2349,7 +2363,7 @@ class BotB:
             desc=desc,
             sort=sort,
             filters=filters,
-            conditions=conditions,
+            conditions=_conditions,
         )
 
         out = []
