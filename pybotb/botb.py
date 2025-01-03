@@ -1319,7 +1319,13 @@ class BotB:
                 params[f"conditions[{i}][property]"] = cond.property
                 params[f"conditions[{i}][operator]"] = cond.operator
                 if type(cond.operand) in (list, tuple):
-                    params[f"conditions[{i}][operand][]"] = json.dumps(cond.operand)
+                    if len(cond.operand) == 1:
+                        params[f"conditions[{i}][operand][]"] = cond.operand[0]
+                    elif len(cond.operand) == 0:
+                        raise ValueError("Length of operand must be more than 0")
+                    else:
+                        for n in range(len(cond.operand)):
+                            params[f"conditions[{i}][operand][{n}]"] = cond.operand[n]
                 else:
                     params[f"conditions[{i}][operand]"] = cond.operand
                 params[f"conditions[{i}][key]"] = cond.property
@@ -1338,6 +1344,9 @@ class BotB:
             params["filters"] = filter_str
 
         if conditions:
+            # Encode the parameters into form data.
+            # (The "k: (None, v)" syntax is Requests-specific; it tells it to
+            # encode the value as a data string, not as a file to upload.)
             params_form = dict([(k, (None, v)) for k, v in params.items()])
             ret = self._s.post(url, data=params_form)
         else:
@@ -1804,7 +1813,7 @@ class BotB:
         """
         playlist_ids = self.entry_get_playlist_ids(entry_id)
 
-        condition = Condition("playlist_id", "IN", playlist_ids)
+        condition = Condition("id", "IN", playlist_ids)
 
         return self.list_iterate_over_pages(
             self.playlist_list, sort="id", conditions=[condition]

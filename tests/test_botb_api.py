@@ -121,15 +121,43 @@ def test_botb_api_entry(botb):
     ret = botb.entry_list(sort="id", desc=True)
     assert ret
 
+    # List with conditions
+    ret = botb.entry_list(page_length=250, conditions=[
+        Condition("donloads", ">", 5),
+        Condition("votes", "<", 10),
+    ])
+    for entry in ret:
+        assert entry.donloads > 5
+        assert entry.votes < 10
+
+    # Note - this test may be flaky if the conditions aren't right.
+    # (i.e. if the top 250 visualls all have more favs than the top
+    # 250 pixels).
+    #
+    # In that case, switch up the conditions until the query works.
+    ret = botb.entry_list(page_length=250, sort="favs", desc=True, conditions=[
+        Condition("format_token", "IN", ["pixel", "visuall"])
+    ])
+    n_pixels = 0
+    n_visualls = 0
+    for entry in ret:
+        assert entry.format_token in ("pixel", "visuall")
+        if entry.format_token == "pixel":
+            n_pixels += 1
+        if entry.format_token == "visuall":
+            n_visualls += 1
+    assert n_pixels > 0
+    assert n_visualls > 0
+
     # List playlists for entry
     ret_ids = botb.entry_get_playlist_ids(66768)
+    assert ret_ids
 
-    # TODO
-    #ret = botb.entry_get_playlists(66768)
-    #assert ret
-    #for e in ret:
-    #	assert type(e) == pybotb.botb.Entry
-    #	assert e.id in ret_ids
+    ret = botb.entry_get_playlists(66768)
+    assert ret
+    for e in ret:
+        assert type(e) == pybotb.botb.Playlist
+        assert e.id in ret_ids
 
     ret = botb.entry_get_favorites(73426)
     assert ret
