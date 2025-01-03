@@ -7,6 +7,7 @@ against the ones reported by the documentation index.
 import pybotb.botb
 import requests
 from typing import Optional
+import re
 
 #: Base URL of the API.
 API_BASE = "/api/v1/"
@@ -58,16 +59,86 @@ IGNORED_ENDPOINTS = [
     "/api/v1/playlist_to_entry/random",  # Not useful; if you want a random playlist, use
                                          # /api/v1/playlist/random
     "/api/v1/documentation/index",       # Internal use only
+    "/api/v1/group/post_show",			 # Internal/admin endpoint
+    "/api/v1/group/post_hide",			 # Internal/admin endpoint
 ]
 
+#: Ignored object type properties, with reasons.
+IGNORED_PROPERTIES = {
+    "BotBr": [
+        "class",  # Renamed to botbr_class to avoid collision with Python class keyword
+    ],
+    "Battle": [
+        # Upstream:
+        "profileURL",			 # Redundant, see url
+        "end",            		 # Renamed to end_str, end attr is a datetime object
+        "end_date",       		 # Redundant
+        "end_time_left",  		 # Redundant
+        "period_end",	  		 # Renamed to period_end_str, period_end attr is a datetime object
+        "period_end_date",       # Redundant
+        "period_end_seconds",	 # Redundant
+        "period_end_time_left",  # Redundant
+        "start",				 # Renamed to start_str
+
+        #: pyBotB overrides:
+        "end_str",
+        "start_str",
+    ],
+    "Entry": [
+        # Upstream:
+        "datetime",				# Renamed to datetime_str, datetime is a datetime object
+        "medium_audio",			# Collapsed into medium attr
+        "medium_visual",		# Collapsed into medium attr
+        "medium_other",			# Collapsed into medium attr
+
+        # These are added into the API query result, but not listed as properties
+        # in the documentation:
+        "battle",
+        "botbr",
+        "format",
+
+        # pyBotB overrides:
+        "datetime_str",
+        "medium",
+    ],
+    "GroupThread": [
+        # Upstream:
+        "first_post_timestamp", # Renamed to first_post_timestamp_str, first_post_timestamp is a datetime object
+        "last_post_timestamp",  # Renamed to last_post_timestamp_str, last_post_timestamp is a datetime object
+
+        # pyBotB overrides:
+        "first_post_timestamp_str",
+        "last_post_timestamp_str",
+    ],
+    "Playlist": [
+        # Upstream:
+        "date_create",  # Renamed to date_create_str, date_create is a datetime object
+        "date_modify",  # Renamed to date_modify_str, date_modify is a datetime object
+
+        # pyBotB overrides:
+        "date_create_str",
+        "date_modify_str",
+    ]
+}
+
+def dataclass_name_to_object_type(dataclass_name: str):
+    """
+    Convert a name from PascalCase (class name) to snake_case (object type name).
+    """
+
+    # https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case#1176023
+    return re.sub(r'(?<!^)(?=[A-Z])', '_', dataclass_name).lower()
+
 if __name__ == "__main__":
+    doc_index = get_documentation_index()
+
     # Get list of API endpoints
     endpoints = []
-    for object_type, doc in get_documentation_index().items():
+    for object_type, doc in doc_index.items():
         for command in doc.get("commands", []):
             endpoints.append(API_BASE + object_type + "/" + command)
 
-    # Iterate over every function in BotB object
+    # Iterate over every function in BotB object and check endpoint completeness
     pybotb_endpoints = []
     for func_name in dir(pybotb.botb.BotB):
         if func_name.startswith("__"):
@@ -92,6 +163,44 @@ if __name__ == "__main__":
             print(f"Endpoint not in upstream documentation: {endpoint}")
             not_upstream += 1
 
+    # Iterate over every dataclass and check property completeness
+    missing_props = 0
+    missing_props_ignored = 0
+    not_upstream_props = 0
+    not_upstream_props_ignored = 0
+
+    for dataclass_name in dir(pybotb.botb):
+        dataclass_props = []
+        object_type = dataclass_name_to_object_type(dataclass_name)
+        if object_type not in doc_index:
+            continue
+
+        object_props = doc_index[object_type]["properties"]
+        dataclass = getattr(pybotb.botb, dataclass_name)
+
+        for prop in dataclass.__dataclass_fields__:
+            if prop.startswith("_"):
+                continue
+            dataclass_props.append(prop)
+
+        for prop in object_props:
+            if prop in IGNORED_PROPERTIES.get(dataclass_name, []):
+                missing_props_ignored += 1
+                continue
+
+            if prop not in dataclass_props:
+                print(f"Missing property: {dataclass_name}.{prop}")
+                missing_props += 1
+
+        for prop in dataclass_props:
+            if prop in IGNORED_PROPERTIES.get(dataclass_name, []):
+                not_upstream_props_ignored += 1
+                continue
+
+            if prop not in object_props and prop not in IGNORED_PROPERTIES.get(dataclass_name, []):
+                print(f"Property not in upstream documentation: {dataclass_name}.{prop}")
+                not_upstream_props += 1
+
     n_ignored = len(IGNORED_ENDPOINTS)
     n_endpoints = len(endpoints) - n_ignored
     present = n_endpoints - missing
@@ -110,7 +219,19 @@ if __name__ == "__main__":
     else:
         col_not_upstream = "32"  # Green
 
+    if missing_props > 0:
+        col_missing_props = "31"  # Red
+    else:
+        col_missing_props = "32"  # Green
+
+    if not_upstream_props > 0:
+        col_not_upstream_props = "31"  # Red
+    else:
+        col_not_upstream_props = "32"  # Green
+
     print("\n\033[1mSummary:\033[0m\n")
-    print(f" - \033[{col_present};1m{present}/{n_endpoints}\033[0;{col_present}m ({present_percent:.02f}%) endpoint(s) implemented \033[3m({n_ignored} ignored)\033[0m")
+    print(f" - \033[{col_present};1m{present}/{n_endpoints}\033[0;{col_present}m ({present_percent:.02f}%) endpoint(s) implemented \033[3m({n_ignored}/{len(endpoints)} ignored)\033[0m")
     print(f" - \033[{col_not_upstream};1m{not_upstream}\033[0;{col_not_upstream}m endpoint(s) not in upstream documentation\033[0m")
+    print(f" - \033[{col_missing_props};1m{missing_props}\033[0;{col_missing_props}m properties missing from dataclasses \033[3m({missing_props_ignored} ignored)\033[0m")
+    print(f" - \033[{col_not_upstream_props};1m{not_upstream_props}\033[0;{col_not_upstream_props}m properties not upstream from dataclasses \033[3m({not_upstream_props_ignored} ignored)\033[0m")
     print()

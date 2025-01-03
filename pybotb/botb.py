@@ -11,6 +11,11 @@ from typing import cast, Any, Callable, Dict, List, Optional, TypedDict, Union, 
 from urllib.parse import quote, urlencode
 import json
 
+try:  # Python >= 3.11
+    from enum import StrEnum
+except ImportError:
+    from strenum import StrEnum
+
 from . import VERSION
 from .utils import Session, unroll_payload, cached_property_dep
 
@@ -248,10 +253,9 @@ class Medium(Enum):
     is derived from "medium_audio", "medium_visual", etc. properties of the API.
     """
 
-    UNKNOWN = 0
+    OTHER = 0
     AUDIO = 1
     VISUAL = 2
-    # TODO
 
 
 @dataclass
@@ -315,6 +319,22 @@ class Format:
         return self.__repr__()
 
 
+class BattlePeriod(StrEnum):
+    """String enum containing battle period values."""
+
+    #: Upcoming battle.
+    WARMUP = "warmup"
+
+    #: Entry period.
+    ENTRY = "entry"
+
+    #: Voting period.
+    VOTE = "vote"
+
+    #: Battle has ended.
+    END = "end"
+
+
 @dataclass
 class Battle:
     """Represents a battle."""
@@ -324,6 +344,12 @@ class Battle:
 
     #: Title of the battle.
     title: str
+
+    #: URL to the battle.
+    url: str
+
+    #: URL to the entry list page of the battle.
+    profile_url: str
 
     #: Full URL to the battle cover art (with https://battleofthebits.com prefix).
     cover_art_url: str
@@ -412,7 +438,13 @@ class Battle:
     #: item; for majors, there may be more formats.
     format_tokens: List[str]
 
-    # TODO check if this is returned
+    #: Current battle period. "warmup" for upcoming battles, "entry" for
+    #: entry period, "vote" for voting period, "end" for end period.
+    period: BattlePeriod
+
+    #: False if the "no late penalties" option is enabled.
+    #:
+    #: (TODO, this does not seem to actually be returned by the site)
     disable_penalty: bool = False
 
     #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
@@ -599,6 +631,18 @@ class Entry:
     def downloads(self, downloads: int):
         self.donloads = downloads
 
+    #: Relative URL to the entry source file, for downloading (note the deliberate typo).
+    donload_url: str
+
+    @property
+    def download_url(self) -> str:
+        """Longhand for "donload_url", for spelling convenience."""
+        return self.donload_url
+
+    @download_url.setter
+    def download_url(self, download_url: str):
+        self.donload_url = download_url
+
     #: Amount of favorites the entry has.
     favs: int
 
@@ -623,8 +667,14 @@ class Entry:
     #: etc.)
     medium: Medium
 
+    #: Amount of plays this entry has.
+    plays: int
+
     #: Amount of comments ("posts") under this entry.
     posts: int
+
+    #: URL to the entry's page on the site.
+    profile_url: str
 
     #: ???
     q: int
@@ -638,6 +688,12 @@ class Entry:
 
     #: Amount of votes this entry got.
     votes: int
+
+    #: URL to the player for the entry.
+    view_url: str
+
+    #: Preview URL.
+    preview_url: str
 
     #: Length of the entry, in seconds.
     #:
@@ -709,7 +765,7 @@ class Entry:
         elif "medium_visual" in payload_parsed:
             payload_parsed["medium"] = Medium.VISUAL
         else:
-            payload_parsed["medium"] = Medium.UNKNOWN
+            payload_parsed["medium"] = Medium.OTHER
 
         # HACK: some old entries from 2009 are broken and have null posts
         # (e.g. all entries in https://battleofthebits.com/arena/Battle/335/MainScreen/themed+allgear+-+internet+power+struggle).
@@ -1125,6 +1181,15 @@ class Playlist:
 
     #: Description of the playlist.
     description: Optional[str] = None
+
+    #: ID of the entry used as the thumbnail, or None if none is set.
+    #:
+    #: To get the Entry object for the thumbnail, use
+    #:   BotBr.entry_load(playlist.thumbnail_id).
+    #:
+    #: To get the URL of the thumbnail, get the `:prop:.Entry.thumbnail_property`
+    #: property of the entry object fetched with the function above.
+    thumbnail_id: Optional[int] = None
 
     #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
     #: value that isn't exposed through the class.
