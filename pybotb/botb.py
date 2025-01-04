@@ -418,7 +418,7 @@ class Battle:
     #: other dates on the site).
     #:
     #: The start date is also converted to a datetime for developer convenience;
-    #: see :attr:`.BotBr.start_date`.
+    #: see :attr:`.start`.
     start_str: str
 
     @cached_property_dep("start_str")
@@ -426,7 +426,7 @@ class Battle:
         """
         Last seen date as a datetime object.
 
-        For the raw string, see :attr:`.BotBr.start_str`.
+        For the raw string, see :attr:`.start_str`.
         """
         return datetime.strptime(self.start_str, "%Y-%m-%d %H:%M:%S").replace(
             tzinfo=pytz.timezone("America/Los_Angeles")
@@ -440,7 +440,7 @@ class Battle:
     #: period.
     #:
     #: The end date is also converted to a datetime for developer convenience;
-    #: see :attr:`.BotBr.end_date`.
+    #: see :attr:`.BotBr.end`.
     end_str: str = field()
 
     @cached_property_dep("end_str")
@@ -451,7 +451,7 @@ class Battle:
         If :attr:`.period` is "vote", this signifies the end of the voting
         period.
 
-        For the raw string, see :attr:`.BotBr.end_str`.
+        For the raw string, see :attr:`.end_str`.
         """
         return datetime.strptime(self.end_str, "%Y-%m-%d %H:%M:%S").replace(
             tzinfo=pytz.timezone("America/Los_Angeles")
@@ -470,10 +470,10 @@ class Battle:
     #: other dates on the site).
     #:
     #: For major battles, this signifies the "final results" datetime;
-    #: for the current battle period's end date, see :attr:`.BotBr.period_end`.
+    #: for the current battle period's end date, see :attr:`.period_end`.
     #:
     #: The end date is also converted to a datetime for developer convenience;
-    #: see :attr:`.BotBr.end`.
+    #: see :attr:`.end`.
     period_end_str: str = field()
 
     @cached_property_dep("period_end_str")
@@ -484,7 +484,7 @@ class Battle:
         If :attr:`.period` is "vote", this signifies the period_end of the voting
         period.
 
-        For the raw string, see :attr:`.BotBr.period_end_str`.
+        For the raw string, see :attr:`.period_end_str`.
         """
         return datetime.strptime(self.period_end_str, "%Y-%m-%d %H:%M:%S").replace(
             tzinfo=pytz.timezone("America/Los_Angeles")
@@ -539,7 +539,7 @@ class EntryAuthor:
     #: String representing the aura PNG name for this BotBr; usually the BotBr ID zero-
     #: padded to 8 characters.
     #:
-    #: This is used to calculate the aura URL in :attr:`.BotBr.aura_url`.
+    #: This is used to calculate the aura URL in :attr:`.aura_url`.
     aura: str
 
     #: Fallback color for the aura, as a hex value (#ffffff).
@@ -548,7 +548,7 @@ class EntryAuthor:
     @property
     def aura_url(self) -> str:
         """
-        URL to the aura PNG; calculated from :attr:`.BotBr.aura`.
+        URL to the aura PNG; calculated from :attr:`.aura`.
 
         This is a pyBotB-specific property.
         """
@@ -836,7 +836,7 @@ class Entry:
         return ret
 
     def __repr__(self):
-        return f'<Entry: "{self.name}" by {self.botbr.name} (Format {self.format_token}, Battle {self.battle.name}, ID {self.id})>'
+        return f'<Entry: "{self.title}" by {self.authors_display} (Format {self.format_token}, Battle {self.battle.name}, ID {self.id})>'
 
     def __str__(self):
         return self.__repr__()
@@ -959,7 +959,7 @@ class GroupThread:
         """
         First post's timestamp as a datetime object.
 
-        For the raw string, see :attr:`.BotBr.first_post_timestamp_str`.
+        For the raw string, see :attr:`.first_post_timestamp_str`.
         """
         return datetime.strptime(
             self.first_post_timestamp_str, "%Y-%m-%d %H:%M:%S"
@@ -978,7 +978,7 @@ class GroupThread:
 
         None if the thread only contains one post.
 
-        For the raw string, see :attr:`.BotBr.last_post_timestamp_str`.
+        For the raw string, see :attr:`.last_post_timestamp_str`.
         """
         if self.last_post_timestamp_str is None:
             return None
@@ -1196,7 +1196,7 @@ class Playlist:
     #: site).
     #:
     #: The last-on date is also converted to a datetime for developer convenience;
-    #: see :attr:`.BotBr.date_create`.
+    #: see :attr:`.date_create`.
     date_create_str: str
 
     @cached_property_dep("date_create_str")
@@ -1205,7 +1205,7 @@ class Playlist:
         Last seen date as a datetime object.
 
         For the raw string, see
-        :attr:`.BotBr.date_create_str`.
+        :attr:`.date_create_str`.
         """
         return datetime.strptime(self.date_create_str, "%Y-%m-%d").replace(
             tzinfo=pytz.timezone("America/Los_Angeles")
@@ -1216,7 +1216,7 @@ class Playlist:
     #: site).
     #:
     #: The last-on date is also converted to a datetime for developer convenience;
-    #: see :attr:`.BotBr.date_modify`.
+    #: see :attr:`.date_modify`.
     date_modify_str: str = field()
 
     @cached_property_dep("date_modify_str")
@@ -1225,7 +1225,7 @@ class Playlist:
         Last seen date as a datetime object.
 
         For the raw string, see
-        :attr:`.BotBr.date_modify_str`.
+        :attr:`.date_modify_str`.
         """
         return datetime.strptime(self.date_modify_str, "%Y-%m-%d").replace(
             tzinfo=pytz.timezone("America/Los_Angeles")
@@ -1622,6 +1622,8 @@ class BotB:
         if conditions:
             i = 0
 
+            # Filters are ignored when passing conditions, make sure we manually
+            # convert them to conditions.
             if filters:
                 for fkey, fval in filters.items():
                     params[f"conditions[{i}][key]"] = fkey
@@ -1632,9 +1634,7 @@ class BotB:
                         params[f"conditions[{i}][operand]"] = str(fval)
                     else:
                         params[f"conditions[{i}][operator]"] = "LIKE"
-                        params[f"conditions[{i}][operand]"] = (
-                            "%" + param_stringify(fval) + "%"
-                        )
+                        params[f"conditions[{i}][operand]"] = param_stringify(fval)
 
                     i += 1
 
@@ -1969,7 +1969,7 @@ class BotB:
         Convinience shorthand for `:py:method:.BotB.palette_list` which pre-fills the
         filters to search for the entry and automatically aggregates all results pages.
 
-        :param entry_id: ID of the entry to get palettes for.
+        :param botbr_id: ID of the BotBr to get palettes for.
         :param desc: If True, returns items in descending order. Requires sort key to be
             set.
         :param sort: Object property to sort by.
