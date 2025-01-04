@@ -1597,7 +1597,7 @@ class BotB:
 
         :param object_type: Object type string.
         :param page_number: Number of the list page, for pagination.
-        :param page_length: Length of the list page, for pagination (max. 250).
+        :param page_length: Length of the list page, for pagination (max. 500).
         :param desc: If True, returns items in descending order. Requires sort key to be
             set.
         :param sort: Object property to sort by.
@@ -1613,8 +1613,8 @@ class BotB:
         if desc is True and sort is None:
             raise ValueError("desc option requires sort key to be set")
 
-        if page_length > 250:
-            raise ValueError("Maximum page length is 250")
+        if page_length > 500:
+            raise ValueError("Maximum page length is 500")
 
         url = f"https://battleofthebits.com/api/v1/{object_type}/list/{page_number}/{page_length}"
         params = {}
@@ -1717,7 +1717,9 @@ class BotB:
         except Exception as e:
             raise ConnectionError(ret.text) from e
 
-    def _search(self, object_type: str, query: str) -> List[dict]:
+    def _search(
+        self, object_type: str, query: str, page_number: int = 0, page_length: int = 25
+    ) -> List[dict]:
         """
         Search for objects with the given object type using the provided query.
 
@@ -1726,13 +1728,18 @@ class BotB:
 
         :param object_type: Object type string.
         :param query: String to query for.
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 500).
         :returns: A list of dictionaries containing the JSON results.
         :raises ConnectionError: On connection error.
         """
+        if page_length > 500:
+            raise ValueError("Maximum page length is 500")
+
         query_enc = quote(query, safe="")
 
         ret = self._s.get(
-            f"https://battleofthebits.com/api/v1/{object_type}/search/{query_enc}"
+            f"https://battleofthebits.com/api/v1/{object_type}/search/{query_enc}/{page_number}/{page_length}"
         )
         if ret.status_code == 404:
             raise ConnectionError(ret.text)
@@ -1864,7 +1871,9 @@ class BotB:
 
         return BotBr.from_payload(ret)
 
-    def botbr_search(self, query: str) -> List[BotBr]:
+    def botbr_search(
+        self, query: str, page_number: int = 0, page_length: int = 25
+    ) -> List[BotBr]:
         """
         Search for BotBrs that match the given query.
 
@@ -1874,7 +1883,9 @@ class BotB:
             returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
-        ret = self._search("botbr", query)
+        ret = self._search(
+            "botbr", query, page_number=page_number, page_length=page_length
+        )
 
         out = []
         for payload in ret:
@@ -2068,7 +2079,9 @@ class BotB:
 
         return Entry.from_payload(ret)
 
-    def entry_search(self, query: str) -> List[Entry]:
+    def entry_search(
+        self, query: str, page_number: int = 0, page_length: int = 25
+    ) -> List[Entry]:
         """
         Search for entries that match the given query.
 
@@ -2078,7 +2091,9 @@ class BotB:
             returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
-        ret = self._search("entry", query)
+        ret = self._search(
+            "entry", query, page_number=page_number, page_length=page_length
+        )
 
         out = []
         for payload in ret:
@@ -2288,7 +2303,9 @@ class BotB:
 
         return Battle.from_payload(ret)
 
-    def battle_search(self, query: str) -> List[Battle]:
+    def battle_search(
+        self, query: str, page_number: int = 0, page_length: int = 25
+    ) -> List[Battle]:
         """
         Search for battles that match the given query.
 
@@ -2298,7 +2315,9 @@ class BotB:
             returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
-        ret = self._search("battle", query)
+        ret = self._search(
+            "battle", query, page_number=page_number, page_length=page_length
+        )
 
         out = []
         for payload in ret:
@@ -2481,7 +2500,9 @@ class BotB:
 
         return GroupThread.from_payload(ret)
 
-    def group_thread_search(self, query: str) -> List[GroupThread]:
+    def group_thread_search(
+        self, query: str, page_number: int = 0, page_length: int = 25
+    ) -> List[GroupThread]:
         """
         Search for group threads that match the given query.
 
@@ -2491,7 +2512,9 @@ class BotB:
             search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
-        ret = self._search("group_thread", query)
+        ret = self._search(
+            "group_thread", query, page_number=page_number, page_length=page_length
+        )
 
         out = []
         for payload in ret:
@@ -2574,7 +2597,9 @@ class BotB:
 
         return Tag.from_payload(ret)
 
-    def tag_search(self, query: str) -> List[Tag]:
+    def tag_search(
+        self, query: str, page_number: int = 0, page_length: int = 25
+    ) -> List[Tag]:
         """
         Search for tags that match the given query.
 
@@ -2584,7 +2609,9 @@ class BotB:
             returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
-        ret = self._search("tag", query)
+        ret = self._search(
+            "tag", query, page_number=page_number, page_length=page_length
+        )
 
         out = []
         for payload in ret:
@@ -2843,7 +2870,9 @@ class BotB:
 
         return Playlist.from_payload(ret)
 
-    def playlist_search(self, query: str) -> List[Playlist]:
+    def playlist_search(
+        self, query: str, page_number: int = 0, page_length: int = 25
+    ) -> List[Playlist]:
         """
         Search for playlists that match the given query.
 
@@ -2853,7 +2882,9 @@ class BotB:
             search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
-        ret = self._search("playlist", query)
+        ret = self._search(
+            "playlist", query, page_number=page_number, page_length=page_length
+        )
 
         out = []
         for payload in ret:
@@ -3030,7 +3061,9 @@ class BotB:
 
         return LyceumArticle.from_payload(ret)
 
-    def lyceum_article_search(self, query: str) -> List[LyceumArticle]:
+    def lyceum_article_search(
+        self, query: str, page_number: int = 0, page_length: int = 25
+    ) -> List[LyceumArticle]:
         """
         Search for lyceum articles that match the given query.
 
@@ -3040,7 +3073,9 @@ class BotB:
             search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
-        ret = self._search("lyceum_article", query)
+        ret = self._search(
+            "lyceum_article", query, page_number=page_number, page_length=page_length
+        )
 
         out = []
         for payload in ret:
