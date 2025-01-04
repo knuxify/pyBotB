@@ -509,7 +509,7 @@ you'll see in the wild.
 
 ## Known quirks
 
-This is a somewhat-comprehensive list of quirks with the BotB API and various objects that exist within BotB's nearly 20-year-old database. These are all worked around in pyBotB; they are listed here as they could be of interest to other API implementations.
+This is a WIP list of quirks with the BotB API and various objects that exist within BotB's nearly 20-year-old database. These are all worked around in pyBotB; they are listed here as they could be of interest to other API implementations.
 
 * **Battle:** Battles fetched through the `/api/v1/battle/load` endpoint do not have `period` and `period_end(_*)` properties. If you need to access them, use the `list` endpoint with a filter to match for the ID.
 * **Entry:** Some older entries do not have comment threads attached to them; for those entries, the `posts` property will be missing. If you depend on it being there, you can assume that a missing `posts` property is equivalent to a `posts` value of `0`.
