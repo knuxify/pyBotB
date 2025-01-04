@@ -135,7 +135,6 @@ Some API queries within the site's client-side JS also provide a "key" property 
     * `%ve` will match `weave` and `eve`,
     * `dream%` will match `dreamghost.it`,
     * `%dad%` will match `dads`, `asdad`, `qwertydaduiop`
-  * *(Note that this is unlike SQL syntax, where a glob operation like that is done with a `*` symbol.)*
 * `IN` - check if the value of the property is contained within the list provided in the operand. **The operand must be a list of values.**
 * `IS`/`IS NOT` - can be used in combination with an operand of `NULL` or `NOT NULL` to check if a field is/is not NULL. All other operands are not allowed.
 
