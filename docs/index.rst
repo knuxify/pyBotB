@@ -6,14 +6,12 @@
 pyBotB documentation
 ====================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
-
+toctree
 
 .. toctree::
    :maxdepth: 2
-   :caption: Usage
+   :caption: pyBotB
+   :hidden:
 
-   usage/botb_api
-   usage/data_classes
+   botb_api
+   usage/index

@@ -29,7 +29,7 @@ classifiers = [
 ]
 
 [dependency-groups]
-docs = ["sphinx", "sphinx-autodoc-typehints", "enum-tools[sphinx]", "furo"]
+docs = ["sphinx", "sphinx-autodoc-typehints", "enum-tools[sphinx]", "furo", "myst-parser"]
 format = ["ruff"]
 test = ["pytest"]
 
@@ -56,7 +56,7 @@ pre-summary-newline = true
 test = "python3 -m pytest"
 lint = "ruff check pybotb"
 build-docs = "sphinx-build -M html docs/ docs/_build/"
-serve-docs = "sphinx-autobuild docs/ docs/_build/"
+serve-docs = "sh -c \"PYTHONPATH=. sphinx-autobuild docs/ docs/_build/\""
 check-api-coverage = "sh -c \"PYTHONPATH=. python3 tests/check_api_coverage.py\""
 check-dataclass-compat = "sh -c \"PYTHONPATH=. python3 tests/check_dataclass_compat.py\""
 
