@@ -39,14 +39,14 @@ class Session(requests.Session):
         self.mount("https://", HTTPAdapter(max_retries=REQ_RETRIES))
         self.set_user_agent("pybotb {VERSION}")
 
-    def get(
+    def get(  # type: ignore
         self,
         url: str,
         *args,
         handle_notfound: bool = False,
         retry_count: int = 0,
         **kwargs,
-    ):  # type: ignore
+    ):
         """
         Get data from an URL.
 

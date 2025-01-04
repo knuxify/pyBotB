@@ -1461,16 +1461,16 @@ class BotB:
                         raise ValueError("Length of list operand must be more than 0")
                     elif len(cond.operand) == 1:  # type: ignore
                         params[f"conditions[{i}][operand][]"] = param_stringify(
-                            cond.operand[0]
-                        )  # type: ignore
+                            cond.operand[0]  # type: ignore
+                        )
                     else:
                         for n in range(len(cond.operand)):  # type: ignore
                             params[f"conditions[{i}][operand][{n}]"] = param_stringify(
-                                cond.operand[n]
+                                cond.operand[n]  # type: ignore
                             )
 
                 else:
-                    params[f"conditions[{i}][operand]"] = param_stringify(cond.operand)
+                    params[f"conditions[{i}][operand]"] = param_stringify(cond.operand)  # type: ignore
 
                 i += 1
 
@@ -1759,8 +1759,8 @@ class BotB:
             raise ConnectionError(ret.text) from e
 
         out = []
-        for e in entries:
-            out.append(Entry.from_payload(e))
+        for entry in entries:
+            out.append(Entry.from_payload(entry))
         return out
 
     def botbr_get_palettes(
@@ -2027,14 +2027,14 @@ class BotB:
             if b_id == battle_id:
                 return Battle.from_payload(b)
 
-        ret = self._load("battle", battle_id)
-        if ret is None:
+        ret_load = self._load("battle", battle_id)
+        if ret_load is None:
             return None
 
-        ret["period"] = "unknown"
-        ret["period_end"] = ret.get("end", "0000-00-00 00:00:01")
+        ret_load["period"] = "unknown"
+        ret_load["period_end"] = ret_load.get("end", "0000-00-00 00:00:01")
 
-        return Battle.from_payload(ret)
+        return Battle.from_payload(ret_load)
 
     def battle_list(
         self,
@@ -2745,8 +2745,8 @@ class BotB:
             raise ConnectionError(ret.text) from e
 
         out = []
-        for e in entries:
-            out.append(Entry.from_payload(e))
+        for entry in entries:
+            out.append(Entry.from_payload(entry))
         return out
 
     #
