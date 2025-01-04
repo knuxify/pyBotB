@@ -1608,6 +1608,7 @@ class BotB:
         :param conditions: List of Condition objects containing list conditions.
         :returns: A list of dictionaries representing the found objects.
         :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
         """
         if desc is True and sort is None:
             raise ValueError("desc option requires sort key to be set")
@@ -1833,6 +1834,7 @@ class BotB:
         :returns: List of BotBr objects representing the search results. If the
                   search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
         """
         ret = self._list(
             "botbr",
@@ -2036,6 +2038,7 @@ class BotB:
         :returns: List of entry objects representing the search results. If the
                   search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
         """
         ret = self._list(
             "entry",
@@ -2255,6 +2258,7 @@ class BotB:
         :returns: List of Battle objects representing the search results. If the
                   search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
         """
         ret = self._list(
             "battle",
@@ -2371,6 +2375,7 @@ class BotB:
         :returns: List of Favorite objects representing the search results. If the
                   search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
         """
         ret = self._list(
             "favorite",
@@ -2446,6 +2451,7 @@ class BotB:
         :returns: List of GroupThread objects representing the search results. If the
                   search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
         """
         ret = self._list(
             "group_thread",
@@ -2538,6 +2544,7 @@ class BotB:
         :returns: List of Tag objects representing the search results. If the
                   search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
         """
         ret = self._list(
             "tag",
@@ -2631,6 +2638,7 @@ class BotB:
         :returns: List of Palette objects representing the search results. If the
                   search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
         """
         # HACK: Loading palette ID 79 crashes the API. Make sure we *don't* fetch it.
         _conditions = [Condition("id", "<>", 79)]
@@ -2729,6 +2737,7 @@ class BotB:
         :returns: List of Format objects representing the search results. If the
                   search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
         """
         ret = self._list(
             "format",
@@ -2804,6 +2813,7 @@ class BotB:
         :returns: List of Playlist objects representing the search results. If the
                   search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
         """
         ret = self._list(
             "playlist",
@@ -2880,6 +2890,7 @@ class BotB:
         :returns: List of Playlist objects representing the search results. If the
             search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
         """
         ret = self._list(
             "playlist_to_entry",
@@ -2989,6 +3000,7 @@ class BotB:
         :returns: List of LyceumArticle objects representing the search results. If the
                   search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
         """
         ret = self._list(
             "lyceum_article",
@@ -3153,6 +3165,7 @@ class BotB:
         :returns: List of DailyStats objects representing the search results. If the
                   search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
         """
         ret = self._list(
             "daily_stats",
