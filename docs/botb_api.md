@@ -168,7 +168,7 @@ In other languages - you must send a `POST` request, the `Content-Type` header m
 conditions[0][property]=property1
 conditions[0][operand]=<>
 conditions[0][operator]=operator1
-v
+
 conditions[1][property]=property2
 conditions[1][operand]=LIKE
 conditions[1][operator]=operator2
