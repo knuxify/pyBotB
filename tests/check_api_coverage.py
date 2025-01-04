@@ -59,6 +59,9 @@ def get_api_endpoint_from_docstring(docstring: str) -> Optional[str]:
 #: Ignored endpoints, with reasons.
 IGNORED_ENDPOINTS = [
     "/api/v1/alert/botbr_checked",  # Userbot-only
+    "/api/v1/botbr_stats/load",  # Not useful; the ID of a botbr_stats object is not exposed
+    # anywhere, so this API is unused.
+    "/api/v1/botbr_stats/list",  # Returns 500 on all queries
     "/api/v1/playlist_to_entry/load",  # Not useful; the ID of a playlist_to_entry object
     # is not exposed anywhere, so this API is unused.
     "/api/v1/playlist_to_entry/random",  # Not useful; if you want a random playlist, use
@@ -72,6 +75,14 @@ IGNORED_ENDPOINTS = [
 IGNORED_PROPERTIES = {
     "BotBr": [
         "class",  # Renamed to botbr_class to avoid collision with Python class keyword
+    ],
+    "BotBrStats": [
+        "date",
+        "date_str",
+    ],
+    "DailyStats": [
+        "date",
+        "date_str",
     ],
     "Battle": [
         # Upstream:
@@ -88,6 +99,7 @@ IGNORED_PROPERTIES = {
         #: pyBotB overrides:
         "end_str",
         "start_str",
+        "period_end_str",
     ],
     "Entry": [
         # Upstream:

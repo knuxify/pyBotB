@@ -1305,6 +1305,190 @@ class PlaylistToEntry:
         return self.__repr__()
 
 
+@dataclass
+class DailyStats:
+    """
+    A single entry in the BotB daily site stats table.
+
+    Note that statistics apply to the given date in the US East Coast timezone; if you
+    want to get statistics for a date in your timezone, you will have to aggregate data
+    from multiple days.
+    """
+
+    #: ID of the daily stats table entry.
+    id: int
+
+    #: String representing the date of the statistic, in YYYY-MM-DD format,
+    #: in the US East Coast timezone (same as all other dates on-site).
+    #:
+    #: This date is also converted to a datetime for developer convenience;
+    #: see :attr:`.date`.
+    date_str: str
+
+    @cached_property_dep("date_str")
+    def date(self) -> datetime:
+        """
+        Statistic date as a datetime object.
+
+        For the raw string, see
+        :attr:`.date_str`.
+        """
+        return datetime.strptime(self.date_str, "%Y-%m-%d").replace(
+            tzinfo=pytz.timezone("America/Los_Angeles")
+        )
+
+    #: Total amount of page views.
+    page_views: int
+
+    #: Total amount of entry plays.
+    plays: int
+
+    #: Total amount of entry downloads (note the deliberate typo).
+    donloads: int
+
+    @property
+    def downloads(self) -> int:
+        """Longhand for "donloads", for spelling convenience."""
+        return self.donloads
+
+    @downloads.setter
+    def downloads(self, downloads: int):
+        self.donloads = downloads
+
+    #: Amount of unique IPs visiting the site.
+    ip_count: int
+
+    #: Amount of entries submitted to the site.
+    entry_count: int
+
+    #: Amount of BotBrs seen on the site.
+    botbr_count: int
+
+    #: Amount of users seen on the site; same as :attr:`.botbr_count`.
+    user_count: int
+
+    #: Amount of group thread posts made on the site.
+    post_count: int
+
+    #: Total amount of boons owned by BotBrs, including the bank value,
+    #: rounded to an integer.
+    economic_pool: int
+
+    #: Average amount of boons owned by BotBrs, rounded to an integer.
+    avg_debit: int
+
+    #: Current amount of boons held by the BotB Bank (BotB account), rounded
+    #: to an integer.
+    bank_debit: int
+
+    #: How much boons the bank has given out to BotBrs.
+    bank_credit: int
+
+    #: Total points of all BotBrs on the site.
+    total_points: int
+
+    #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
+    #: value that isn't exposed through the class.
+    _raw_payload: Optional[dict] = field(default=None, repr=False)
+
+    @classmethod
+    def from_payload(cls, payload: dict) -> Self:
+        """
+        Convert a JSON payload (provided as a dict) into a Favorite object.
+
+        :param payload: Dictionary containing the JSON payload.
+        :returns: The resulting Favorite object.
+        """
+        ret = unroll_payload(
+            cls,
+            payload,
+            payload_to_attr={
+                "date": "date_str",
+            },
+        )
+        ret._raw_payload = payload.copy()
+
+        return ret
+
+    def __repr__(self):
+        return f"<BotBrStats: {self.label} = {self.val} for BotBr {self.botbr_id} on {self.date_str}>"
+
+    def __str__(self):
+        return self.__repr__()
+
+
+@dataclass
+class BotBrStats:
+    """
+    A single entry in the BotBr stats table.
+
+    Note that statistics apply to the given date in the US East Coast timezone; if you
+    want to get statistics for a date in your timezone, you will have to aggregate data
+    from multiple days.
+    """
+
+    #: ID of the BotBr the statistic applies to.
+    botbr_id: int
+
+    #: Label of the statistic.
+    #:
+    #: "level" for level, "boons" for boon count, "a_light" for aura light
+    #: points, "a_ack" for aura ack points, "a_dark" for aura dark points,
+    #: class name for class point amount.
+    label: str
+
+    #: Value of the statistic.
+    val: float
+
+    #: String representing the date of the statistic, in YYYY-MM-DD format,
+    #: in the US East Coast timezone (same as all other dates on-site).
+    #:
+    #: This date is also converted to a datetime for developer convenience;
+    #: see :attr:`.date`.
+    date_str: str
+
+    @cached_property_dep("date_str")
+    def date(self) -> datetime:
+        """
+        Statistic date as a datetime object.
+
+        For the raw string, see
+        :attr:`.date_str`.
+        """
+        return datetime.strptime(self.date_str, "%Y-%m-%d").replace(
+            tzinfo=pytz.timezone("America/Los_Angeles")
+        )
+
+    #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
+    #: value that isn't exposed through the class.
+    _raw_payload: Optional[dict] = field(default=None, repr=False)
+
+    @classmethod
+    def from_payload(cls, payload: dict) -> Self:
+        """
+        Convert a JSON payload (provided as a dict) into a Favorite object.
+
+        :param payload: Dictionary containing the JSON payload.
+        :returns: The resulting Favorite object.
+        """
+        ret = unroll_payload(
+            cls,
+            payload,
+            payload_to_attr={
+                "date": "date_str",
+            },
+        )
+        ret._raw_payload = payload.copy()
+
+        return ret
+
+    def __repr__(self):
+        return f"<BotBrStats: {self.label} = {self.val} for BotBr {self.botbr_id} on {self.date_str}>"
+
+    def __str__(self):
+        return self.__repr__()
+
+
 @dataclass(slots=True)
 class Condition:
     """Represents a condition passed to a "list" API query."""
@@ -1498,7 +1682,7 @@ class BotB:
             ret = self._s.get(url)
 
         if ret.status_code == 400 and "Please RTFM" in ret.text:
-            raise ValueError(ret.text.split("\n")[0])
+            raise ValueError(ret.text.split("\n")[0].split("<br>")[0])
 
         if not ret.text:
             return []
@@ -2841,6 +3025,152 @@ class BotB:
             out.append(LyceumArticle.from_payload(payload))
 
         return out
+
+    #
+    # BotBr stats
+    #
+
+    def botbr_stats_by_botbr_id(self, botbr_id: int) -> List[BotBrStats]:
+        """
+        Get a list of BotBrStats objects representing all of the BotBr's stats.
+
+        Returns an empty list for nonexistent BotBrs.
+
+        :api: /api/v1/botbr_stats/by_botbr_id
+        :returns: List of BotBrStats objects representing the BotBr stats.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._s.get(
+            f"https://battleofthebits.com/api/v1/botbr_stats/by_botbr_id/{botbr_id}"
+        )
+
+        if ret.status_code != 200:
+            raise ConnectionError(f"{ret.status_code}: {ret.text}")
+
+        try:
+            stats = ret.json()
+        except Exception as e:
+            raise ConnectionError(ret.text) from e
+
+        out = []
+        for stat in stats:
+            out.append(BotBrStats.from_payload(stat))
+        return out
+
+    def botbr_stats_days_back(self, botbr_id: int, n_days: int) -> List[BotBrStats]:
+        """
+        Get a list of BotBrStats objects representing the BotBr's stats from the last
+        {n_days} days.
+
+        Returns an empty list for nonexistent BotBrs.
+
+        :api: /api/v1/botbr_stats/days_back
+        :returns: List of BotBrStats objects representing the BotBr stats.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._s.get(
+            f"https://battleofthebits.com/api/v1/botbr_stats/days_back/{botbr_id}/{n_days}"
+        )
+
+        if ret.status_code != 200:
+            raise ConnectionError(f"{ret.status_code}: {ret.text}")
+
+        try:
+            stats = ret.json()
+        except Exception as e:
+            raise ConnectionError(ret.text) from e
+
+        out = []
+        for stat in stats:
+            out.append(BotBrStats.from_payload(stat))
+        return out
+
+    def botbr_stats_random(self) -> BotBrStats:
+        """
+        Get a random BotBr stat.
+
+        :api: /api/v1/botbr_stats/random
+        :returns: BotBrStats object representing the BotBr stat.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._random("botbr_stats")
+
+        return BotBrStats.from_payload(ret)
+
+    #
+    # Daily stats
+    #
+
+    def daily_stats_load(self, daily_stats_id: int) -> Union[DailyStats, None]:
+        """
+        Load a daily stat's info by its ID.
+
+        :api: /api/v1/daily_stats/load
+        :param daily_stats_id: ID of the daily stat to load.
+        :returns: DailyStats object representing the user, or None if the user is not
+            found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._load("daily_stats", daily_stats_id)
+        if ret is None:
+            return None
+
+        return DailyStats.from_payload(ret)
+
+    def daily_stats_list(
+        self,
+        page_number: int = 0,
+        page_length: int = 25,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[DailyStats]:
+        """
+        Search for daily stats that match the given query.
+
+        For a list of supported filter/condition properties, see :py:class:`.DailyStats`.
+
+        :api: /api/v1/daily_stats/list
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :param desc: If True, returns items in descending order.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of DailyStats objects representing the search results. If the
+                  search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._list(
+            "daily_stats",
+            page_number=page_number,
+            page_length=page_length,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+        )
+
+        out = []
+        for payload in ret:
+            out.append(DailyStats.from_payload(payload))
+
+        return out
+
+    def daily_stats_random(self) -> DailyStats:
+        """
+        Get a random daily stat.
+
+        :api: /api/v1/daily_stats/random
+        :returns: DailyStats object representing the daily stat.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._random("daily_stats")
+
+        return DailyStats.from_payload(ret)
 
 
 class BotBHacks(BotB):

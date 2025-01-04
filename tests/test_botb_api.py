@@ -333,3 +333,45 @@ def test_botb_api_tag(botb):
     assert ret
     for tag in ret:
         assert tag.entry_id == 71306
+
+
+def test_botb_api_daily_stats(botb):
+    """Test daily_stats API methods."""
+    # Load
+    ret = botb.daily_stats_load(100)
+    assert ret
+    assert ret.id == 100
+
+    # Load 404
+    ret = botb.daily_stats_load(12345678987654321)
+    assert ret is None
+
+    # Random
+    ret = botb.daily_stats_random()
+    assert ret
+    assert type(ret) is pybotb.botb.DailyStats
+
+    # List
+    ret = botb.daily_stats_list(sort="id", desc=True)
+    assert ret
+    for stat in ret:
+        assert type(stat) is pybotb.botb.DailyStats
+
+
+def test_botb_api_botbr_stats(botb):
+    """Test botbr_stats API methods."""
+    # Load by BotBr
+    ret = botb.botbr_stats_by_botbr_id(16333)
+    assert ret
+    for stat in ret:
+        assert type(stat) is pybotb.botb.BotBrStats
+
+    ret = botb.botbr_stats_days_back(16333, 5)
+    assert ret
+    for stat in ret:
+        assert type(stat) is pybotb.botb.BotBrStats
+
+    # Random
+    ret = botb.botbr_stats_random()
+    assert ret
+    assert type(ret) is pybotb.botb.BotBrStats
