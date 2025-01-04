@@ -407,7 +407,7 @@ The first entry is covered, the rest are covers...? TODO
 * **On failure:**
   * **Server error** (HTTP `500`)
 
-## Palette
+### Palette
 
 ### Get current default palette (`/api/v1/palette/current_default`)
 
