@@ -409,7 +409,7 @@ The first entry is covered, the rest are covers...? TODO
 
 ### Palette
 
-### Get current default palette (`/api/v1/palette/current_default`)
+#### Get current default palette (`/api/v1/palette/current_default`)
 
 > `GET` `/api/v1/palette/current_default`
 >
