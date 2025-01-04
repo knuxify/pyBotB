@@ -1598,7 +1598,8 @@ class BotB:
         :param object_type: Object type string.
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be
+            set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value as
             the value. Note that filters are deprecated; conditions should be used
@@ -1608,6 +1609,9 @@ class BotB:
         :returns: A list of dictionaries representing the found objects.
         :raises ConnectionError: On connection error.
         """
+        if desc is True and sort is None:
+            raise ValueError("desc option requires sort key to be set")
+
         if page_length > 250:
             raise ValueError("Maximum page length is 250")
 
@@ -1752,7 +1756,8 @@ class BotB:
 
         :param list_func: List function, e.g. `:py:method:.BotB.botbr_list`, etc.
         :param max_items: Limit how many items to fetch. 0 means no limit.
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be
+            set.
         :param sort: Object property to sort by. Recommended.
         :param filters: Dictionary with object property as the key and filter value as
             the value. Note that filters are deprecated; conditions should be used
@@ -1819,7 +1824,7 @@ class BotB:
         :api: /api/v1/botbr/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value
                         as the value. Note that filters are deprecated; conditions
@@ -1920,7 +1925,8 @@ class BotB:
 
         :api: /api/v1/entry/botbr_favorites_playlist
         :param botbr_id: ID of the BotBr to get favorites for.
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be
+            set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value as
             the value. Note that filters are deprecated; conditions should be used
@@ -1962,7 +1968,8 @@ class BotB:
         filters to search for the entry and automatically aggregates all results pages.
 
         :param entry_id: ID of the entry to get palettes for.
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be
+            set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value as
             the value. Note that filters are deprecated; conditions should be used
@@ -2020,7 +2027,7 @@ class BotB:
         :api: /api/v1/entry/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value
                         as the value. Note that filters are deprecated; conditions
@@ -2091,7 +2098,8 @@ class BotB:
         filters to search for the entry and automatically aggregates all results pages.
 
         :param entry_id: ID of the entry to get tags for.
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be
+            set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value as
             the value. Note that filters are deprecated; conditions should be used
@@ -2163,7 +2171,8 @@ class BotB:
         filters to search for the entry and automatically aggregates all results pages.
 
         :param entry_id: ID of the entry to get favorites for.
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be
+            set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value as
             the value. Note that filters are deprecated; conditions should be used
@@ -2237,7 +2246,7 @@ class BotB:
         :api: /api/v1/battle/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value
                         as the value. Note that filters are deprecated; conditions
@@ -2353,7 +2362,7 @@ class BotB:
         :api: /api/v1/favorite/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value
                         as the value. Note that filters are deprecated; conditions
@@ -2428,7 +2437,7 @@ class BotB:
         :api: /api/v1/group_thread/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value
                         as the value. Note that filters are deprecated; conditions
@@ -2520,7 +2529,7 @@ class BotB:
         :api: /api/v1/tag/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value
                         as the value. Note that filters are deprecated; conditions
@@ -2613,7 +2622,7 @@ class BotB:
         :api: /api/v1/palette/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value
                         as the value. Note that filters are deprecated; conditions
@@ -2711,7 +2720,7 @@ class BotB:
         :api: /api/v1/format/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value
                         as the value. Note that filters are deprecated; conditions
@@ -2786,7 +2795,7 @@ class BotB:
         :api: /api/v1/playlist/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value
                         as the value. Note that filters are deprecated; conditions
@@ -2861,7 +2870,8 @@ class BotB:
         :api: /api/v1/playlist_to_entry/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be
+            set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value as
             the value. Note that filters are deprecated; conditions should be used
@@ -2970,7 +2980,7 @@ class BotB:
         :api: /api/v1/lyceum_article/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value
                         as the value. Note that filters are deprecated; conditions
@@ -3134,7 +3144,7 @@ class BotB:
         :api: /api/v1/daily_stats/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order.
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value
                         as the value. Note that filters are deprecated; conditions
