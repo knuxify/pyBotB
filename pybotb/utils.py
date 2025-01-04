@@ -1,15 +1,17 @@
 # SPDX-License-Identifier: MIT
+"""Common utility functions used in pyBotB."""
+
 import dataclasses
-from functools import cached_property
 from enum import Enum, IntEnum
 import requests
 from requests.adapters import HTTPAdapter, Retry
-from typing import Any, Type, List, Optional, cast
+from typing import Any, Optional, Union, cast
 import sys
+
 if sys.version_info >= (3, 12):
-    from typing import GenericAlias
+    from typing import GenericAlias  # type: ignore
 else:
-    from typing_extensions import GenericAlias
+    from typing_extensions import GenericAlias  # type: ignore
 import time
 
 
@@ -37,8 +39,17 @@ class Session(requests.Session):
         self.mount("https://", HTTPAdapter(max_retries=REQ_RETRIES))
         self.set_user_agent("pybotb {VERSION}")
 
-    def get(self, url: str, handle_notfound: bool = False, retry_count: int = 0, **kwargs):  # typing: ignore
+    def get(
+        self,
+        url: str,
+        *args,
+        handle_notfound: bool = False,
+        retry_count: int = 0,
+        **kwargs,
+    ):  # type: ignore
         """
+        Get data from an URL.
+
         Wrapper for self._s.get with better retry handling.
 
         :param url: URL to access.
@@ -49,14 +60,14 @@ class Session(requests.Session):
             raise ConnectionError("Maximum retries reached")
 
         try:
-            ret = super().get(url, **kwargs)
+            ret = super().get(url, *args, **kwargs)
             if ret.status_code == 500 and handle_notfound:
                 json = ret.json()
                 if "unfounded" in json["response_message"]:
                     ret.status_code = 404
-        except:
+        except Exception as e:
             if (retry_count + 1) > MAX_RETRIES:
-                raise ConnectionError("Maximum retries reached")
+                raise ConnectionError("Maximum retries reached") from e
 
             time.sleep(3)
 
@@ -111,34 +122,47 @@ def unroll_payload(
         except TypeError:
             is_enum = False
 
-        if class_attr_type in (int, float, str) or (is_enum and not is_intenum):
-            payload_parsed[class_attr] = class_attr_type(payload[payload_attr])
-        elif is_intenum:
-            payload_parsed[class_attr] = class_attr_type(int(payload[payload_attr]))
-        elif class_attr_type == bool:
-            val = payload[payload_attr]
-            if type(val) == bool:
-                payload_parsed[class_attr] = val
-            elif type(val) == str:
-                payload_parsed[class_attr] = False if val.lower() == "false" else True
+        try:
+            if class_attr_type in (int, float, str) or (is_enum and not is_intenum):
+                payload_parsed[class_attr] = class_attr_type(payload[payload_attr])
+            elif is_intenum:
+                payload_parsed[class_attr] = class_attr_type(int(payload[payload_attr]))
+            elif class_attr_type is bool:
+                val = payload[payload_attr]
+                if type(val) is bool:
+                    payload_parsed[class_attr] = val
+                elif type(val) is str:
+                    payload_parsed[class_attr] = (
+                        False if val.lower() == "false" else True
+                    )
+                else:
+                    payload_parsed[class_attr] = bool(val)
             else:
-                payload_parsed[class_attr] = bool(val)
-        else:
-            payload_parsed[class_attr] = payload[payload_attr]
+                payload_parsed[class_attr] = payload[payload_attr]
+        except Exception as e:
+            raise ValueError(
+                f"Failed to convert value of {class_attr} (object ID: {payload.get('id', None)}). This is a pyBotB bug!",
+                e,
+            ) from e
 
     try:
         return cls(**payload_parsed)
     except TypeError as e:
-        raise TypeError(f"Payload missing required property {e}. {payload_parsed}")
+        raise TypeError(
+            f"Payload missing required property {e}. This is a pyBotB bug! {payload_parsed}"
+        ) from e
+
 
 _NOT_FOUND = object()
 _NOT_INITIALIZED = object()
 
+
 class cached_property_dep:
     """
-    Decorator inspired by cached_property which automatically invalidates
-    the property when an attribute with the given name changes.
+    Decorator inspired by cached_property which automatically invalidates the
+    property when an attribute with the given name changes.
     """
+
     def __init__(self, dep_attrname: str = ""):
         self.func = None
         self.attrname = None
@@ -146,7 +170,7 @@ class cached_property_dep:
         self.dep_attrname = dep_attrname
         self._dep_attr_cached = _NOT_INITIALIZED
 
-    def __call__(self, func):
+    def __call__(self, func):  # noqa: D102
         self.func = func
         self.__doc__ = func.__doc__
         self.__module__ = func.__module__
@@ -166,7 +190,9 @@ class cached_property_dep:
             return self
 
         if self.attrname is None:
-            raise TypeError("Cannot use cached_property_dep instance without calling __set_name__ on it.")
+            raise TypeError(
+                "Cannot use cached_property_dep instance without calling __set_name__ on it."
+            )
 
         invalid = False
 
@@ -187,4 +213,15 @@ class cached_property_dep:
 
         return val
 
-    __class_getitem__ = classmethod(GenericAlias)
+    # Copied from cached_property, TODO is this needed?
+    __class_getitem__ = classmethod(GenericAlias)  # type: ignore
+
+
+def param_stringify(to_stringify: Union[int, str, bool]):
+    """
+    Take a parameter and stringifies it to a json-like format suitable for dumping
+    into urlencode (i.e. no quotes around strings).
+    """
+    if type(to_stringify) is bool:
+        return "true" if to_stringify is True else "false"
+    return str(to_stringify)

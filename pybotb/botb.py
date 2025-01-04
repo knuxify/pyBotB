@@ -1,24 +1,31 @@
 # SPDX-License-Identifier: MIT
 """Code for interfacing with BotB."""
 
-from functools import cached_property
 import dataclasses
 from dataclasses import dataclass, field
-import datetime
-from enum import Enum, IntEnum
+from datetime import datetime
+from enum import IntEnum
 import pytz
-from typing import cast, Any, Callable, Dict, List, Optional, TypedDict, Union, Self
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Tuple,
+    Optional,
+    Union,
+    Self,
+)
 from urllib.parse import quote, urlencode
-import json
 import re
 
 try:  # Python >= 3.11
     from enum import StrEnum
 except ImportError:
-    from strenum import StrEnum
+    from strenum import StrEnum  # type: ignore
 
 from . import VERSION
-from .utils import Session, unroll_payload, cached_property_dep
+from .utils import Session, unroll_payload, cached_property_dep, param_stringify
 
 #: Level-up point requirements for a BotBr.
 #:
@@ -139,7 +146,7 @@ class BotBr:
     create_date_str: str
 
     @cached_property_dep("create_date_str")
-    def create_date(self) -> datetime.datetime:
+    def create_date(self) -> datetime:
         """
         Account creation date as a datetime object.
 
@@ -162,7 +169,7 @@ class BotBr:
     laston_date_str: str
 
     @cached_property_dep("laston_date_str")
-    def laston_date(self) -> datetime.datetime:
+    def laston_date(self) -> datetime:
         """
         Last seen date as a datetime object.
 
@@ -250,8 +257,8 @@ class Medium(StrEnum):
     """
     Enum for different medium types; not to be confused with formats.
 
-    The numerical values are pyBotB-specific; on the Entry, object, this value
-    is derived from "medium_audio", "medium_visual", etc. properties of the API.
+    The numerical values are pyBotB-specific; on the Entry, object, this value is
+    derived from "medium_audio", "medium_visual", etc. properties of the API.
     """
 
     OTHER = "other"
@@ -312,8 +319,10 @@ class Format:
 
         # HACK: some maxfilesize values are malformed and have stray unicode characters.
         # Extract just the number.
-        if type(payload["maxfilesize"]) == str:
-            payload_parsed["maxfilesize"] = int(''.join(re.findall(r'\d+', payload["maxfilesize"].strip())))
+        if type(payload["maxfilesize"]) is str:
+            payload_parsed["maxfilesize"] = int(
+                "".join(re.findall(r"\d+", payload["maxfilesize"].strip()))
+            )
 
         ret = unroll_payload(cls, payload_parsed)
         ret._raw_payload = payload.copy()
@@ -413,7 +422,7 @@ class Battle:
     start_str: str
 
     @cached_property_dep("start_str")
-    def start(self) -> datetime.datetime:
+    def start(self) -> datetime:
         """
         Last seen date as a datetime object.
 
@@ -427,14 +436,20 @@ class Battle:
     #: YYYY-MM-DD HH:MM:SS format, in the US East Coast timezone (same as all
     #: other dates on the site).
     #:
+    #: If :attr:`.period` is "vote", this signifies the end of the voting
+    #: period.
+    #:
     #: The end date is also converted to a datetime for developer convenience;
     #: see :attr:`.BotBr.end_date`.
     end_str: str = field()
 
     @cached_property_dep("end_str")
-    def end(self) -> datetime.datetime:
+    def end(self) -> datetime:
         """
-        Last seen date as a datetime object.
+        Date and time at which the battle ends.
+
+        If :attr:`.period` is "vote", this signifies the end of the voting
+        period.
 
         For the raw string, see :attr:`.BotBr.end_str`.
         """
@@ -450,10 +465,35 @@ class Battle:
     #: entry period, "vote" for voting period, "end" for end period.
     period: BattlePeriod
 
+    #: String representing the date and time at which the battle ends, in
+    #: YYYY-MM-DD HH:MM:SS format, in the US East Coast timezone (same as all
+    #: other dates on the site).
+    #:
+    #: For major battles, this signifies the "final results" datetime;
+    #: for the current battle period's end date, see :attr:`.BotBr.period_end`.
+    #:
+    #: The end date is also converted to a datetime for developer convenience;
+    #: see :attr:`.BotBr.end`.
+    period_end_str: str = field()
+
+    @cached_property_dep("period_end_str")
+    def period_end(self) -> datetime:
+        """
+        Date and time at which the current battle period ends.
+
+        If :attr:`.period` is "vote", this signifies the period_end of the voting
+        period.
+
+        For the raw string, see :attr:`.BotBr.period_end_str`.
+        """
+        return datetime.strptime(self.period_end_str, "%Y-%m-%d %H:%M:%S").replace(
+            tzinfo=pytz.timezone("America/Los_Angeles")
+        )
+
     #: False if the "no late penalties" option is enabled.
     #:
     #: (TODO, this does not seem to actually be returned by the site)
-    disable_penalty: bool = False
+    # disable_penalty: bool = False
 
     #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
     #: value that isn't exposed through the class.
@@ -475,6 +515,7 @@ class Battle:
             payload_to_attr={
                 "start": "start_str",
                 "end": "end_str",
+                "period_end": "period_end_str",
             },
         )
         ret._raw_payload = payload.copy()
@@ -491,7 +532,8 @@ class Battle:
 @dataclass
 class EntryAuthor:
     """
-    Represents an entry author, as returned in the "authors" field of the entry API.
+    Represents an entry author, as returned in the "authors" field of the entry
+    API.
     """
 
     #: String representing the aura PNG name for this BotBr; usually the BotBr ID zero-
@@ -609,7 +651,7 @@ class Entry:
     datetime_str: str = field()
 
     @cached_property_dep("datetime_str")
-    def datetime(self) -> datetime.datetime:
+    def datetime(self) -> datetime:
         """
         Account creation date as a datetime object.
 
@@ -841,9 +883,7 @@ class Favorite:
 
 
 class GroupID(IntEnum):
-    """
-    Forum group IDs.
-    """
+    """Forum group IDs."""
 
     #: "Bulletins" group.
     BULLETINS = 1
@@ -915,15 +955,15 @@ class GroupThread:
     first_post_timestamp_str: str
 
     @cached_property_dep("first_post_timestamp_str")
-    def first_post_timestamp(self) -> datetime.datetime:
+    def first_post_timestamp(self) -> datetime:
         """
         First post's timestamp as a datetime object.
 
         For the raw string, see :attr:`.BotBr.first_post_timestamp_str`.
         """
-        return datetime.strptime(self.first_post_timestamp_str, "%Y-%m-%d %H:%M:%S").replace(
-            tzinfo=pytz.timezone("America/Los_Angeles")
-        )
+        return datetime.strptime(
+            self.first_post_timestamp_str, "%Y-%m-%d %H:%M:%S"
+        ).replace(tzinfo=pytz.timezone("America/Los_Angeles"))
 
     #: Timestamp of the last post in the thread, in YYYY-MM-DD HH:MM:SS format,
     #: in the US East Coast timezone (same as all other dates on the site).
@@ -932,7 +972,7 @@ class GroupThread:
     last_post_timestamp_str: Optional[str] = None
 
     @cached_property_dep("last_post_timestamp_str")
-    def last_post_timestamp(self) -> Optional[datetime.datetime]:
+    def last_post_timestamp(self) -> Optional[datetime]:
         """
         Last post's timestamp as a datetime object.
 
@@ -943,9 +983,9 @@ class GroupThread:
         if self.last_post_timestamp_str is None:
             return None
 
-        return datetime.strptime(self.last_post_timestamp_str, "%Y-%m-%d %H:%M:%S").replace(
-            tzinfo=pytz.timezone("America/Los_Angeles")
-        )
+        return datetime.strptime(
+            self.last_post_timestamp_str, "%Y-%m-%d %H:%M:%S"
+        ).replace(tzinfo=pytz.timezone("America/Los_Angeles"))
 
     #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
     #: value that isn't exposed through the class.
@@ -959,10 +999,14 @@ class GroupThread:
         :param payload: Dictionary containing the JSON payload.
         :returns: The resulting Favorite object.
         """
-        ret = unroll_payload(cls, payload, payload_to_attr={
-            "first_post_timestamp": "first_post_timestamp_str",
-            "last_post_timestamp": "last_post_timestamp_str",
-        })
+        ret = unroll_payload(
+            cls,
+            payload,
+            payload_to_attr={
+                "first_post_timestamp": "first_post_timestamp_str",
+                "last_post_timestamp": "last_post_timestamp_str",
+            },
+        )
         ret._raw_payload = payload.copy()
 
         return ret
@@ -1018,9 +1062,7 @@ class LyceumArticle:
         return ret
 
     def __repr__(self):
-        return (
-            f"<LyceumArticle: {self.title} (ID: {self.id})>"
-        )
+        return f"<LyceumArticle: {self.title} (ID: {self.id})>"
 
     def __str__(self):
         return self.__repr__()
@@ -1073,17 +1115,18 @@ class Palette:
     #: Title of the palette.
     title: str
 
-    #: URL to the palette CSS.
-    #:
-    #: This is a CSS file hosted on battleofthebits.com which contains a
-    #: :root directive with the colors as CSS variables. Each color has its
-    #: hex code stored in the --colorX variable, with the individual RGB
-    #: components stored in --colorX_r, --colorX_g and --colorX_b for red,
-    #: green and blue respectively.
-    #:
-    #: This variable is derived from the ID.
     @property
     def css_url(self):
+        """
+        URL to the palette CSS.
+
+        This is a CSS file hosted on battleofthebits.com which contains a :root
+        directive with the colors as CSS variables. Each color has its hex code stored
+        in the --colorX variable, with the individual RGB components stored in
+        --colorX_r, --colorX_g and --colorX_b for red, green and blue respectively.
+
+        This variable is derived from the ID.
+        """
         return f"https://battleofthebits.com/disk/palette_vars/{self.id}"
 
     #: ID of the BotBr who made the palette.
@@ -1157,7 +1200,7 @@ class Playlist:
     date_create_str: str
 
     @cached_property_dep("date_create_str")
-    def date_create(self) -> datetime.datetime:
+    def date_create(self) -> datetime:
         """
         Last seen date as a datetime object.
 
@@ -1177,7 +1220,7 @@ class Playlist:
     date_modify_str: str = field()
 
     @cached_property_dep("date_modify_str")
-    def date_modify(self) -> datetime.datetime:
+    def date_modify(self) -> datetime:
         """
         Last seen date as a datetime object.
 
@@ -1233,9 +1276,7 @@ class Playlist:
 
 @dataclass
 class PlaylistToEntry:
-    """
-    Link between playlist and entry returned by the playlist_to_entry API.
-    """
+    """Link between playlist and entry returned by the playlist_to_entry API."""
 
     #: ID of the playlist
     playlist_id: int
@@ -1275,7 +1316,7 @@ class Condition:
     operator: str
 
     #: Operand for the condition.
-    operand: str
+    operand: Union[int, str, bool, List[Any], Tuple[Any]]
 
     def to_dict(self) -> dict:
         """
@@ -1302,8 +1343,8 @@ class BotB:
         """
         Initialize the BotB API access object.
 
-        :param app_name: App name to be used in the user agent for requests;
-                         see `:attr:.app_name`.
+        :param app_name: App name to be used in the user agent for requests; see
+            `:attr:.app_name`.
         """
         #: Internal Session object.
         self._s = Session()
@@ -1341,7 +1382,7 @@ class BotB:
         """
         ret = self._s.get(
             f"https://battleofthebits.com/api/v1/{object_type}/load/{object_id}",
-            handle_notfound=True
+            handle_notfound=True,
         )
         if ret.status_code == 404:
             return None
@@ -1350,8 +1391,8 @@ class BotB:
 
         try:
             return ret.json()
-        except:
-            raise ConnectionError(ret.text)
+        except Exception as e:
+            raise ConnectionError(ret.text) from e
 
     def _list(
         self,
@@ -1360,11 +1401,12 @@ class BotB:
         page_length: int = 25,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
-    ) -> Union[dict, None]:
+    ) -> List[dict]:
         """
-        Load information about an object with the given type and ID.
+        Perform a listing query for the provided object type with the given
+        filtering/sorting/pagination options.
 
         This function is primarily used internally; for API users, use one of the
         load_{object_type}_* functions instead.
@@ -1376,9 +1418,10 @@ class BotB:
         :param sort: Object property to sort by.
         :param filters: Dictionary with object property as the key and filter value as
             the value. Note that filters are deprecated; conditions should be used
-            instead.
+            instead. If both conditions and filters are passed, the filters will be
+            converted to conditions and prepended to the conditions list.
         :param conditions: List of Condition objects containing list conditions.
-        :returns: A dictionary containing the JSON result, or None if not found.
+        :returns: A list of dictionaries representing the found objects.
         :raises ConnectionError: On connection error.
         """
         if page_length > 250:
@@ -1389,20 +1432,46 @@ class BotB:
 
         if conditions:
             i = 0
+
+            if filters:
+                for fkey, fval in filters.items():
+                    params[f"conditions[{i}][key]"] = fkey
+                    params[f"conditions[{i}][property]"] = fkey
+
+                    if type(fval) is int or type(fval) is str and fval.isnumeric():
+                        params[f"conditions[{i}][operator]"] = "="
+                        params[f"conditions[{i}][operand]"] = str(fval)
+                    else:
+                        params[f"conditions[{i}][operator]"] = "LIKE"
+                        params[f"conditions[{i}][operand]"] = (
+                            "%" + param_stringify(fval) + "%"
+                        )
+
+                    i += 1
+
             for cond in conditions:
+                params[f"conditions[{i}][key]"] = cond.property
                 params[f"conditions[{i}][property]"] = cond.property
                 params[f"conditions[{i}][operator]"] = cond.operator
+
                 if type(cond.operand) in (list, tuple):
-                    if len(cond.operand) == 1:
-                        params[f"conditions[{i}][operand][]"] = cond.operand[0]
-                    elif len(cond.operand) == 0:
-                        raise ValueError("Length of operand must be more than 0")
+                    # Type ignore is necessary here since mypy can't tell we check for
+                    # lists/tuples only here
+                    if len(cond.operand) == 0:  # type: ignore
+                        raise ValueError("Length of list operand must be more than 0")
+                    elif len(cond.operand) == 1:  # type: ignore
+                        params[f"conditions[{i}][operand][]"] = param_stringify(
+                            cond.operand[0]
+                        )  # type: ignore
                     else:
-                        for n in range(len(cond.operand)):
-                            params[f"conditions[{i}][operand][{n}]"] = cond.operand[n]
+                        for n in range(len(cond.operand)):  # type: ignore
+                            params[f"conditions[{i}][operand][{n}]"] = param_stringify(
+                                cond.operand[n]
+                            )
+
                 else:
-                    params[f"conditions[{i}][operand]"] = cond.operand
-                params[f"conditions[{i}][key]"] = cond.property
+                    params[f"conditions[{i}][operand]"] = param_stringify(cond.operand)
+
                 i += 1
 
         if desc:
@@ -1410,7 +1479,7 @@ class BotB:
         if sort:
             params["sort"] = sort
 
-        if filters:
+        if filters and not conditions:
             filter_str = ""
             for fkey, fval in filters.items():
                 filter_str += f"^{fkey}~{fval}"
@@ -1436,10 +1505,10 @@ class BotB:
 
         try:
             return ret.json()
-        except:
-            raise ConnectionError(ret.text)
+        except Exception as e:
+            raise ConnectionError(ret.text) from e
 
-    def _random(self, object_type: str) -> Union[dict, None]:
+    def _random(self, object_type: str) -> dict:
         """
         Get random item of the given object type.
 
@@ -1447,19 +1516,19 @@ class BotB:
         get_{object_type}_* functions instead.
 
         :param object_type: Object type string.
-        :returns: A dictionary containing the JSON result, or None if not found.
+        :returns: A dictionary containing the JSON result.
         :raises ConnectionError: On connection error.
         """
         ret = self._s.get(f"https://battleofthebits.com/api/v1/{object_type}/random")
         if ret.status_code == 404:
-            return None
+            raise ConnectionError(ret.text)
 
         try:
             return ret.json()[0]
-        except:
-            raise ConnectionError(ret.text)
+        except Exception as e:
+            raise ConnectionError(ret.text) from e
 
-    def _search(self, object_type: str, query: str) -> Union[dict, None]:
+    def _search(self, object_type: str, query: str) -> List[dict]:
         """
         Search for objects with the given object type using the provided query.
 
@@ -1468,7 +1537,7 @@ class BotB:
 
         :param object_type: Object type string.
         :param query: String to query for.
-        :returns: A dictionary containing the JSON result, or None if not found.
+        :returns: A list of dictionaries containing the JSON results.
         :raises ConnectionError: On connection error.
         """
         query_enc = quote(query, safe="")
@@ -1477,12 +1546,12 @@ class BotB:
             f"https://battleofthebits.com/api/v1/{object_type}/search/{query_enc}"
         )
         if ret.status_code == 404:
-            return None
+            raise ConnectionError(ret.text)
 
         try:
             return ret.json()
-        except:
-            raise ConnectionError(ret.text)
+        except Exception as e:
+            raise ConnectionError(ret.text) from e
 
     def list_iterate_over_pages(
         self,
@@ -1490,7 +1559,7 @@ class BotB:
         max_items: int = 0,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[Any]:
         """
@@ -1544,7 +1613,7 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         ret = self._load("botbr", botbr_id)
-        if not ret:
+        if ret is None:
             return None
 
         return BotBr.from_payload(ret)
@@ -1555,7 +1624,7 @@ class BotB:
         page_length: int = 25,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[BotBr]:
         """
@@ -1631,7 +1700,7 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         ret = self.botbr_search(username)
-        if not ret:
+        if ret is None:
             return None
 
         for user in ret:
@@ -1649,7 +1718,7 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         ret = self.botbr_search(username)
-        if not ret:
+        if ret is None:
             return None
 
         return ret[0]
@@ -1659,7 +1728,7 @@ class BotB:
         botbr_id: int,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[Entry]:
         """
@@ -1677,15 +1746,17 @@ class BotB:
             search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
-        ret = self._s.get(f"https://battleofthebits.com/api/v1/entry/botbr_favorites_playlist/{botbr_id}")
+        ret = self._s.get(
+            f"https://battleofthebits.com/api/v1/entry/botbr_favorites_playlist/{botbr_id}"
+        )
 
         if ret.status_code != 200:
             raise ConnectionError(f"{ret.status_code}: {ret.text}")
 
         try:
             entries = ret.json()
-        except:
-            raise ConnectionError(ret.text)
+        except Exception as e:
+            raise ConnectionError(ret.text) from e
 
         out = []
         for e in entries:
@@ -1697,7 +1768,7 @@ class BotB:
         botbr_id: int,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[Palette]:
         """
@@ -1718,8 +1789,8 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         _filters = {"botbr_id": botbr_id}
-        if filters:
-            _filters = filters | {_filters}
+        if filters is not None:
+            _filters = filters | _filters
 
         return self.list_iterate_over_pages(
             self.palette_list,
@@ -1743,7 +1814,7 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         ret = self._load("entry", entry_id)
-        if not ret:
+        if ret is None:
             return None
 
         return Entry.from_payload(ret)
@@ -1754,7 +1825,7 @@ class BotB:
         page_length: int = 25,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[Entry]:
         """
@@ -1826,7 +1897,7 @@ class BotB:
         entry_id: int,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[Tag]:
         """
@@ -1847,8 +1918,8 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         _filters = {"entry_id": entry_id}
-        if filters:
-            _filters = filters | {_filters}
+        if filters is not None:
+            _filters = filters | _filters
 
         return self.list_iterate_over_pages(
             self.tag_list,
@@ -1860,8 +1931,8 @@ class BotB:
 
     def entry_get_playlist_ids(self, entry_id: int) -> List[int]:
         """
-        Get a list containing the playlist IDs of playlists that this entry
-        has been added to.
+        Get a list containing the playlist IDs of playlists that this entry has been
+        added to.
 
         To get a list of Playlist objects, see `:method:.BotBr.entry_get_playlists`.
 
@@ -1898,7 +1969,7 @@ class BotB:
         entry_id: int,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[Favorite]:
         """
@@ -1919,8 +1990,8 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         _filters = {"entry_id": entry_id}
-        if filters:
-            _filters = filters | {_filters}
+        if filters is not None:
+            _filters = filters | _filters
 
         return self.list_iterate_over_pages(
             self.favorite_list,
@@ -1943,9 +2014,25 @@ class BotB:
         :returns: Battle object representing the user, or None if the user is not found.
         :raises ConnectionError: On connection error.
         """
+        # HACK: Battles loaded through the load endpoint don't have the period value;
+        # use list instead with a filter on the ID value, and fall back to load if
+        # that doesn't work.
+
+        ret = self._list("battle", filters={"id": battle_id})
+        for b in ret:
+            try:
+                b_id = int(b.get("id", None))
+            except ValueError:
+                continue
+            if b_id == battle_id:
+                return Battle.from_payload(b)
+
         ret = self._load("battle", battle_id)
-        if not ret:
+        if ret is None:
             return None
+
+        ret["period"] = "unknown"
+        ret["period_end"] = ret.get("end", "0000-00-00 00:00:01")
 
         return Battle.from_payload(ret)
 
@@ -1955,7 +2042,7 @@ class BotB:
         page_length: int = 25,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[Battle]:
         """
@@ -2027,18 +2114,18 @@ class BotB:
         Get a list of upcoming and ongoing battles.
 
         :api: /api/v1/battle/current
-        :returns: List of Battle objects representing the battles. If there are
-                  no upcoming/ongoing battles, the list will be empty.
+        :returns: List of Battle objects representing the battles. If there are no
+            upcoming/ongoing battles, the list will be empty.
         :raises ConnectionError: On connection error.
         """
-        ret = self._s.get(f"https://battleofthebits.com/api/v1/battle/current")
+        ret = self._s.get("https://battleofthebits.com/api/v1/battle/current")
         if ret.status_code != 200:
             raise ConnectionError(f"{ret.status_code}: {ret.text}")
 
         try:
             battles = ret.json()
-        except:
-            raise ConnectionError(ret.text)
+        except Exception as e:
+            raise ConnectionError(ret.text) from e
 
         out = []
         for b in battles:
@@ -2060,7 +2147,7 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         ret = self._load("favorite", favorite_id)
-        if not ret:
+        if ret is None:
             return None
 
         return Favorite.from_payload(ret)
@@ -2071,7 +2158,7 @@ class BotB:
         page_length: int = 25,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[Favorite]:
         """
@@ -2130,11 +2217,12 @@ class BotB:
 
         :api: /api/v1/group_thread/load
         :param group_thread_id: ID of the group_thread to load.
-        :returns: GroupThread object representing the user, or None if the user is not found.
+        :returns: GroupThread object representing the user, or None if the user is not
+            found.
         :raises ConnectionError: On connection error.
         """
         ret = self._load("group_thread", group_thread_id)
-        if not ret:
+        if ret is None:
             return None
 
         return GroupThread.from_payload(ret)
@@ -2145,7 +2233,7 @@ class BotB:
         page_length: int = 25,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[GroupThread]:
         """
@@ -2200,8 +2288,8 @@ class BotB:
 
         :api: /api/v1/group_thread/search
         :param query: Search query for the search.
-        :returns: List of GroupThread objects representing the search results. If the search
-            returned no results, the list will be empty.
+        :returns: List of GroupThread objects representing the search results. If the
+            search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
         ret = self._search("group_thread", query)
@@ -2226,7 +2314,7 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         ret = self._load("tag", tag_id)
-        if not ret:
+        if ret is None:
             return None
 
         return Tag.from_payload(ret)
@@ -2237,7 +2325,7 @@ class BotB:
         page_length: int = 25,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[Tag]:
         """
@@ -2319,7 +2407,7 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         ret = self._load("palette", palette_id)
-        if not ret:
+        if ret is None:
             return None
 
         return Palette.from_payload(ret)
@@ -2330,7 +2418,7 @@ class BotB:
         page_length: int = 25,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[Palette]:
         """
@@ -2392,14 +2480,14 @@ class BotB:
         :returns: Palette object representing the current default palette.
         :raises ConnectionError: On connection error.
         """
-        ret = self._s.get(f"https://battleofthebits.com/api/v1/palette/current_default")
+        ret = self._s.get("https://battleofthebits.com/api/v1/palette/current_default")
         if ret.status_code != 200:
             raise ConnectionError(f"{ret.status_code}: {ret.text}")
 
         try:
             palette_json = ret.json()[0]
-        except:
-            raise ConnectionError(ret.text)
+        except Exception as e:
+            raise ConnectionError(ret.text) from e
 
         return Palette.from_payload(palette_json)
 
@@ -2417,7 +2505,7 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         ret = self._load("format", format_id)
-        if not ret:
+        if ret is None:
             return None
 
         return Format.from_payload(ret)
@@ -2428,7 +2516,7 @@ class BotB:
         page_length: int = 25,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[Format]:
         """
@@ -2492,7 +2580,7 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         ret = self._load("playlist", playlist_id)
-        if not ret:
+        if ret is None:
             return None
 
         return Playlist.from_payload(ret)
@@ -2503,7 +2591,7 @@ class BotB:
         page_length: int = 25,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[Playlist]:
         """
@@ -2558,8 +2646,8 @@ class BotB:
 
         :api: /api/v1/playlist/search
         :param query: Search query for the search.
-        :returns: List of Playlist objects representing the search results. If the search
-            returned no results, the list will be empty.
+        :returns: List of Playlist objects representing the search results. If the
+            search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
         ret = self._search("playlist", query)
@@ -2576,14 +2664,14 @@ class BotB:
         page_length: int = 25,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[PlaylistToEntry]:
         """
         Perform a query against the playlist-to-entry table.
 
-        In most cases, you don't need to use this function directly; instead,
-        use `:py:method:.BotB.playlist_get_entries` or
+        In most cases, you don't need to use this function directly; instead, use
+        `:py:method:.BotB.playlist_get_entries` or
         `:py:method:.BotB.entry_get_playlists`.
 
         :api: /api/v1/playlist_to_entry/list
@@ -2591,12 +2679,12 @@ class BotB:
         :param page_length: Length of the list page, for pagination (max. 250).
         :param desc: If True, returns items in descending order.
         :param sort: Object property to sort by.
-        :param filters: Dictionary with object property as the key and filter value
-                        as the value. Note that filters are deprecated; conditions
-                        should be used instead.
+        :param filters: Dictionary with object property as the key and filter value as
+            the value. Note that filters are deprecated; conditions should be used
+            instead.
         :param conditions: List of Condition objects containing list conditions.
         :returns: List of Playlist objects representing the search results. If the
-                  search returned no results, the list will be empty.
+            search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
         ret = self._list(
@@ -2617,8 +2705,8 @@ class BotB:
 
     def playlist_get_entry_ids(self, playlist_id: int) -> List[int]:
         """
-        Get a list containing the entry IDs of the playlist with the given ID,
-        in the order that they appear in the playlist.
+        Get a list containing the entry IDs of the playlist with the given ID, in the
+        order that they appear in the playlist.
 
         To get a list of entry objects, see `:method:.BotBr.playlist_get_entries`.
 
@@ -2636,23 +2724,25 @@ class BotB:
 
     def playlist_get_entries(self, playlist_id: int) -> List[Entry]:
         """
-        Get a list containing a the entries in the playlist with the given ID,
-        in the order that they appear in the playlist.
+        Get a list containing a the entries in the playlist with the given ID, in the
+        order that they appear in the playlist.
 
         :api: /api/v1/entry/playlist_playlist
         :param playlist_id: ID of the playlist to load the entries of.
         :returns: List of entry IDs.
         :raises ConnectionError: On connection error.
         """
-        ret = self._s.get(f"https://battleofthebits.com/api/v1/entry/playlist_playlist/{playlist_id}")
+        ret = self._s.get(
+            f"https://battleofthebits.com/api/v1/entry/playlist_playlist/{playlist_id}"
+        )
 
         if ret.status_code != 200:
             raise ConnectionError(f"{ret.status_code}: {ret.text}")
 
         try:
             entries = ret.json()
-        except:
-            raise ConnectionError(ret.text)
+        except Exception as e:
+            raise ConnectionError(ret.text) from e
 
         out = []
         for e in entries:
@@ -2674,7 +2764,7 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         ret = self._load("lyceum_article", lyceum_article_id)
-        if not ret:
+        if ret is None:
             return None
 
         return LyceumArticle.from_payload(ret)
@@ -2685,7 +2775,7 @@ class BotB:
         page_length: int = 25,
         desc: bool = False,
         sort: Optional[str] = None,
-        filters: Optional[Dict[str, str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
     ) -> List[LyceumArticle]:
         """
@@ -2740,8 +2830,8 @@ class BotB:
 
         :api: /api/v1/lyceum_article/search
         :param query: Search query for the search.
-        :returns: List of LyceumArticle objects representing the search results. If the search
-            returned no results, the list will be empty.
+        :returns: List of LyceumArticle objects representing the search results. If the
+            search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
         ret = self._search("lyceum_article", query)
@@ -2764,4 +2854,3 @@ class BotBHacks(BotB):
     """
 
     # TODO: BotBr badge progress (botbr_get_badge_progress)
-
