@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 """
-Script that parses pyBotB docstrings and compares the supported endpoints
-against the ones reported by the documentation index.
+Script that parses pyBotB docstrings and compares the supported endpoints against the
+ones reported by the documentation index.
 """
 
 import pybotb.botb
@@ -38,8 +38,8 @@ def get_api_endpoint_from_docstring(docstring: str) -> Optional[str]:
     Retrieve the API endpoint from the docstring.
 
     :param docstring: Docstring to parse.
-    :returns: String containing the API endpoint, or None if the endpoint is
-              not provided.
+    :returns: String containing the API endpoint, or None if the endpoint is not
+        provided.
     """
     endpoint = None
 
@@ -136,9 +136,7 @@ IGNORED_PROPERTIES = {
 
 
 def dataclass_name_to_object_type(dataclass_name: str):
-    """
-    Convert a name from PascalCase (class name) to snake_case (object type name).
-    """
+    """Convert a name from PascalCase (class name) to snake_case (object type name)."""
     # https://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-snake-case#1176023
     return re.sub(r"(?<!^)(?=[A-Z])", "_", dataclass_name).lower()
 

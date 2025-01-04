@@ -43,20 +43,29 @@ force-exclude = true
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "B", "D", "F"]
-ignore = ["D212", "D203", "D205"]
+ignore = ["D212", "D203", "D205", "D105", "D107"]
 exclude = ["models/migrations"]
 
 [tool.docformatter]
 recursive = true
 black = true
+close-quotes-on-newline = true
 pre-summary-newline = true
 
 [tool.poe.tasks]
 test = "python3 -m pytest"
 lint = "ruff check pybotb"
-_format = "ruff format pybotb"
-docformat = "docformatter pybotb -ir"
-format = ["_format", "docformat"]
 build-docs = "sphinx-build -M html docs/ docs/_build/"
 serve-docs = "sphinx-autobuild docs/ docs/_build/"
 check-api-coverage = "sh -c \"PYTHONPATH=. python3 tests/check_api_coverage.py\""
+check-dataclass-compat = "sh -c \"PYTHONPATH=. python3 tests/check_dataclass_compat.py\""
+
+[tool.poe.tasks.format]
+shell = """
+for proj in pybotb tests; do
+	ruff format $proj
+	docformatter $proj -ir || true
+	ruff check --fix --quiet $proj
+done
+"""
+interpreter = "posix"

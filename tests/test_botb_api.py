@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""
-Tests for the official BotB API portion of pybotb.
-"""
+"""Tests for the official BotB API portion of pybotb."""
 
 import pytest
 

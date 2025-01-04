@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 """
-Make sure that all objects don't break when being turned into a
-dataclass (i.e. we accidentally made a property required that shouldn't be).
+Make sure that all objects don't break when being turned into a dataclass (i.e. we
+accidentally made a property required that shouldn't be).
 
 This test is very time-intensive!
 """
