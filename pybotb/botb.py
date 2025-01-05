@@ -10,6 +10,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Tuple,
     Optional,
@@ -1511,6 +1512,66 @@ class Condition:
         return dataclasses.asdict(self)
 
 
+class BotBPaginatedList:
+    """
+    Iterable implementation for paginated API requests.
+
+    Automatically handles progressing to the next page, etc. Fetches as many objects
+    as possible (500 per page), unless max_items is set to a lower value.
+    """
+
+    def __init__(self, func: Callable, max_items: int = 0, *args, **kwargs):
+        """
+        Initialize a paginated iterator.
+
+        :param func: List function to call; must take page_number and page_length
+            values.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param args: Arguments to pass to the list function.
+        :param kwargs: Keyword arguments to pass to the list function.
+        """
+        self.func = func
+        self.max_items = max_items
+        self.args = args
+        self.kwargs = kwargs
+        if "page_number" in kwargs or "page_length" in kwargs:
+            raise ValueError("Paginated iterator does not accept page number or page length args")
+
+    def __iter__(self):
+        count = 0  # Count is the amount of items parsed;
+        index = 0  # Index is the index of the current entry on the current page;
+        page = 0  # Page is the page number.
+
+        # If we have a max_items value and it's smaller than 500, then
+        # only fetch 1 page with the desired size.
+        if self.max_items > 0:
+            page_length = min(self.max_items, 500)
+        else:
+            page_length = 500
+
+        ret = self.func(*self.args, **self.kwargs, page_number=page, page_length=page_length)
+        while (self.max_items == 0 or (count < self.max_items)) and len(ret) > 0:
+            if index >= len(ret):
+                # If the length of the returned page is less than the max page length,
+                # we've reached the end of the list; no further queries are needed
+                if len(ret) < page_length:
+                    return None
+
+                # If max_items is set and larger than the max page length, make sure
+                # that if we're on the last page we only fetch as many objects as we need
+                if self.max_items > 500:
+                    page_length = min((self.max_items - count), 500)
+
+                # Load the next page and reset the index
+                page += 1
+                ret = self.func(*self.args, **self.kwargs, page_number=page, page_length=page_length)
+                index = 0
+
+            yield ret[index]
+            count += 1
+            index += 1
+
+
 class BotB:
     """
     BotB API class. Exposes access to the official BotB API, documented on the
@@ -1749,55 +1810,6 @@ class BotB:
         except Exception as e:
             raise ConnectionError(ret.text) from e
 
-    def list_iterate_over_pages(
-        self,
-        list_func: Callable,
-        max_items: int = 0,
-        desc: bool = False,
-        sort: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        conditions: Optional[List[Condition]] = None,
-    ) -> List[Any]:
-        """
-        Call the specified list function and iterate over all pages. A sort key is
-        required to make sure the results are returned correctly.
-
-        :param list_func: List function, e.g. `:py:method:.BotB.botbr_list`, etc.
-        :param max_items: Limit how many items to fetch. 0 means no limit.
-        :param desc: If True, returns items in descending order. Requires sort key to be
-            set.
-        :param sort: Object property to sort by. Recommended.
-        :param filters: Dictionary with object property as the key and filter value as
-            the value. Note that filters are deprecated; conditions should be used
-            instead.
-        :param conditions: List of Condition objects containing list conditions.
-        :returns: A list of all found objects, converted to the type returned by
-            list_func.
-        :raises ConnectionError: On connection error.
-        """
-        out = []
-        n_items = 0
-        page = 0
-
-        while True:
-            ret = list_func(
-                page_number=page,
-                page_length=250,
-                desc=desc,
-                sort=sort,
-                filters=filters,
-                conditions=conditions,
-            )
-            out += ret
-
-            page += 1
-            n_items += len(ret)
-
-            if (max_items > 0 and n_items < max_items) or len(ret) < 250:
-                break
-
-        return out
-
     # BotBr
 
     def botbr_load(self, botbr_id: int) -> Union[BotBr, None]:
@@ -1973,7 +1985,8 @@ class BotB:
         sort: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
-    ) -> List[Palette]:
+        max_items: int = 0,
+    ) -> BotBPaginatedList:
         """
         List all palettes created by the BotBr with the given ID.
 
@@ -1988,6 +2001,7 @@ class BotB:
             the value. Note that filters are deprecated; conditions should be used
             instead.
         :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum number of items to return; set to 0 for no limit.
         :returns: List of Palette objects representing the search results. If the search
             returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
@@ -1996,12 +2010,13 @@ class BotB:
         if filters is not None:
             _filters = filters | _filters
 
-        return self.list_iterate_over_pages(
+        return BotBPaginatedList(
             self.palette_list,
             sort=sort or "id",
             desc=desc,
             filters=_filters,
             conditions=conditions,
+            max_items=max_items
         )
 
     #
@@ -2108,7 +2123,8 @@ class BotB:
         sort: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
-    ) -> List[Tag]:
+        max_items: int = 0,
+    ) -> Iterable[Tag]:
         """
         List all tags given to entry with the given ID.
 
@@ -2123,6 +2139,7 @@ class BotB:
             the value. Note that filters are deprecated; conditions should be used
             instead.
         :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum number of items to return; set to 0 for no limit.
         :returns: List of Tag objects representing the search results. If the search
             returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
@@ -2131,15 +2148,16 @@ class BotB:
         if filters is not None:
             _filters = filters | _filters
 
-        return self.list_iterate_over_pages(
+        return BotBPaginatedList(
             self.tag_list,
             sort=sort or "id",
             desc=desc,
             filters=_filters,
             conditions=conditions,
+            max_items=max_items
         )
 
-    def entry_get_playlist_ids(self, entry_id: int) -> List[int]:
+    def entry_get_playlist_ids(self, entry_id: int, max_items: int = 0) -> List[int]:
         """
         Get a list containing the playlist IDs of playlists that this entry has been
         added to.
@@ -2147,31 +2165,33 @@ class BotB:
         To get a list of Playlist objects, see `:method:.BotBr.entry_get_playlists`.
 
         :param entry_id: ID of the entry to load the playlists of.
+        :param max_items: Maximum number of items to return; set to 0 for no limit.
         :returns: List of playlist IDs.
         :raises ConnectionError: On connection error.
         """
-        ret = self.list_iterate_over_pages(
-            self.playlist_to_entry_list, filters={"entry_id": entry_id}
+        ret = BotBPaginatedList(
+            self.playlist_to_entry_list, filters={"entry_id": entry_id}, max_items=max_items
         )
         if not ret:
             return []
 
         return [p.playlist_id for p in ret]
 
-    def entry_get_playlists(self, entry_id: int) -> List[Playlist]:
+    def entry_get_playlists(self, entry_id: int, max_items: int = 0) -> Iterable[Playlist]:
         """
         Get a list of playlists that this entry has been added to.
 
         :param entry_id: ID of the playlist to load the entries of.
+        :param max_items: Maximum number of items to return; set to 0 for no limit.
         :returns: List of Playlist objects.
         :raises ConnectionError: On connection error.
         """
-        playlist_ids = self.entry_get_playlist_ids(entry_id)
+        playlist_ids = self.entry_get_playlist_ids(entry_id, max_items=max_items)
 
         condition = Condition("id", "IN", playlist_ids)
 
-        return self.list_iterate_over_pages(
-            self.playlist_list, sort="id", conditions=[condition]
+        return BotBPaginatedList(
+            self.playlist_list, sort="id", conditions=[condition], max_items=max_items
         )
 
     def entry_get_favorites(
@@ -2181,7 +2201,8 @@ class BotB:
         sort: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
-    ) -> List[Favorite]:
+        max_items: int = 0
+    ) -> Iterable[Favorite]:
         """
         List all favorites for the entry with the given ID.
 
@@ -2196,6 +2217,7 @@ class BotB:
             the value. Note that filters are deprecated; conditions should be used
             instead.
         :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum number of items to return; set to 0 for no limit.
         :returns: List of Favorite objects representing the search results. If the
             search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
@@ -2204,12 +2226,13 @@ class BotB:
         if filters is not None:
             _filters = filters | _filters
 
-        return self.list_iterate_over_pages(
+        return BotBPaginatedList(
             self.favorite_list,
             sort=sort or "id",
             desc=desc,
             filters=_filters,
             conditions=conditions,
+            max_items=max_items
         )
 
     #
@@ -2950,7 +2973,7 @@ class BotB:
         :returns: List of entry IDs.
         :raises ConnectionError: On connection error.
         """
-        ret = self.list_iterate_over_pages(
+        ret = BotBPaginatedList(
             self.playlist_to_entry_list, filters={"playlist_id": playlist_id}
         )
         if not ret:
