@@ -349,6 +349,11 @@ class BattlePeriod(StrEnum):
     #: Voting period.
     VOTE = "vote"
 
+    #: Votes are being tallied.
+    #:
+    #: Not actually returned by the site due to a bug.
+    TALLY = "tally"
+
     #: Battle has ended.
     END = "end"
 
@@ -509,6 +514,11 @@ class Battle:
         :returns: The resulting BotBr object.
         """
         payload_parsed = payload.copy()
+
+        #: HACK: Battles in the tally period have no "period" property,
+        #: but they do have a period_end.
+        if "period_end" in payload_parsed and "period" not in payload_parsed:
+            payload_parsed["period"] = "tally"
 
         ret = unroll_payload(
             cls,
