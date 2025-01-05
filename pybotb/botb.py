@@ -446,7 +446,7 @@ class Battle:
     #: period.
     #:
     #: The end date is also converted to a datetime for developer convenience;
-    #: see :attr:`.BotBr.end`.
+    #: see :attr:`.Battle.end`.
     end_str: str = field()
 
     @cached_property_dep("end_str")
