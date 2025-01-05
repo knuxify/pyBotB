@@ -1910,7 +1910,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: PaginatedList of BotBr objects representing the search results.
+        :returns: :class:`PaginatedList` of BotBr objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
         :raises ConnectionError: On connection error.
@@ -1947,8 +1947,8 @@ class BotB:
         :param query: Search query for the search.
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :returns: PaginatedList of BotBr objects representing the search results. If the
-            search returned no results, the resulting iterable will return no results.
+        :returns: List of BotBr objects representing the search results. If the search
+            returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
         ret = self._search(
@@ -1968,8 +1968,8 @@ class BotB:
         :api: /api/v1/botbr/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: List of BotBr objects representing the search results. If the search
-            returned no results, the list will be empty.
+        :returns: :class:`PaginatedList` of BotBr objects representing the search results. If the
+            search returned no results, the resulting iterable will return no results.
         :raises ConnectionError: On connection error.
         """
         return PaginatedList(
@@ -2185,7 +2185,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: PaginatedList of Battle objects representing the search results.
+        :returns: :class:`PaginatedList` of Battle objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
         :raises ConnectionError: On connection error.
@@ -2222,9 +2222,8 @@ class BotB:
         :param query: Search query for the search.
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :returns: PaginatedList of Battle objects representing the search results. If
-            the search returned no results, the resulting iterable will return no
-            results.
+        :returns: List of Battle objects representing the search results. If the search
+            returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
         ret = self._search(
@@ -2244,8 +2243,9 @@ class BotB:
         :api: /api/v1/battle/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: List of Battle objects representing the search results. If the search
-            returned no results, the list will be empty.
+        :returns: :class:`PaginatedList` of Battle objects representing the search results. If
+            the search returned no results, the resulting iterable will return no
+            results.
         :raises ConnectionError: On connection error.
         """
         return PaginatedList(
@@ -2359,7 +2359,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: PaginatedList of Entry objects representing the search results.
+        :returns: :class:`PaginatedList` of Entry objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
         :raises ConnectionError: On connection error.
@@ -2396,8 +2396,8 @@ class BotB:
         :param query: Search query for the search.
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :returns: PaginatedList of Entry objects representing the search results. If the
-            search returned no results, the resulting iterable will return no results.
+        :returns: List of Entry objects representing the search results. If the search
+            returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
         ret = self._search(
@@ -2417,8 +2417,8 @@ class BotB:
         :api: /api/v1/entry/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: List of Entry objects representing the search results. If the search
-            returned no results, the list will be empty.
+        :returns: :class:`PaginatedList` of Entry objects representing the search results. If the
+            search returned no results, the resulting iterable will return no results.
         :raises ConnectionError: On connection error.
         """
         return PaginatedList(
@@ -2631,7 +2631,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: PaginatedList of Favorite objects representing the search results.
+        :returns: :class:`PaginatedList` of Favorite objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
         :raises ConnectionError: On connection error.
@@ -2742,7 +2742,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: PaginatedList of Format objects representing the search results.
+        :returns: :class:`PaginatedList` of Format objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
         :raises ConnectionError: On connection error.
@@ -2854,7 +2854,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: PaginatedList of GroupThread objects representing the search results.
+        :returns: :class:`PaginatedList` of GroupThread objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
         :raises ConnectionError: On connection error.
@@ -2891,9 +2891,8 @@ class BotB:
         :param query: Search query for the search.
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :returns: PaginatedList of GroupThread objects representing the search results.
-            If the search returned no results, the resulting iterable will return no
-            results.
+        :returns: List of GroupThread objects representing the search results. If the
+            search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
         ret = self._search(
@@ -2915,8 +2914,9 @@ class BotB:
         :api: /api/v1/group_thread/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: List of GroupThread objects representing the search results. If the
-            search returned no results, the list will be empty.
+        :returns: :class:`PaginatedList` of GroupThread objects representing the search results.
+            If the search returned no results, the resulting iterable will return no
+            results.
         :raises ConnectionError: On connection error.
         """
         return PaginatedList(
@@ -3010,7 +3010,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: PaginatedList of LyceumArticle objects representing the search results.
+        :returns: :class:`PaginatedList` of LyceumArticle objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
         :raises ConnectionError: On connection error.
@@ -3047,9 +3047,8 @@ class BotB:
         :param query: Search query for the search.
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :returns: PaginatedList of LyceumArticle objects representing the search
-            results. If the search returned no results, the resulting iterable will
-            return no results.
+        :returns: List of LyceumArticle objects representing the search results. If the
+            search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
         ret = self._search(
@@ -3071,8 +3070,9 @@ class BotB:
         :api: /api/v1/lyceum_article/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: List of LyceumArticle objects representing the search results. If the
-            search returned no results, the list will be empty.
+        :returns: :class:`PaginatedList` of LyceumArticle objects representing the search
+            results. If the search returned no results, the resulting iterable will
+            return no results.
         :raises ConnectionError: On connection error.
         """
         return PaginatedList(
@@ -3164,7 +3164,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: PaginatedList of Palette objects representing the search results.
+        :returns: :class:`PaginatedList` of Palette objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
         :raises ConnectionError: On connection error.
@@ -3295,7 +3295,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: PaginatedList of Playlist objects representing the search results.
+        :returns: :class:`PaginatedList` of Playlist objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
         :raises ConnectionError: On connection error.
@@ -3332,9 +3332,8 @@ class BotB:
         :param query: Search query for the search.
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :returns: PaginatedList of Playlist objects representing the search results. If
-            the search returned no results, the resulting iterable will return no
-            results.
+        :returns: List of Playlist objects representing the search results. If the
+            search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
         ret = self._search(
@@ -3354,8 +3353,9 @@ class BotB:
         :api: /api/v1/playlist/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: List of Playlist objects representing the search results. If the
-            search returned no results, the list will be empty.
+        :returns: :class:`PaginatedList` of Playlist objects representing the search results. If
+            the search returned no results, the resulting iterable will return no
+            results.
         :raises ConnectionError: On connection error.
         """
         return PaginatedList(
@@ -3539,7 +3539,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: PaginatedList of Tag objects representing the search results.
+        :returns: :class:`PaginatedList` of Tag objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
         :raises ConnectionError: On connection error.
@@ -3576,8 +3576,8 @@ class BotB:
         :param query: Search query for the search.
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :returns: PaginatedList of Tag objects representing the search results. If the
-            search returned no results, the resulting iterable will return no results.
+        :returns: List of Tag objects representing the search results. If the search
+            returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
         ret = self._search(
@@ -3597,8 +3597,8 @@ class BotB:
         :api: /api/v1/tag/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: List of Tag objects representing the search results. If the search
-            returned no results, the list will be empty.
+        :returns: :class:`PaginatedList` of Tag objects representing the search results. If the
+            search returned no results, the resulting iterable will return no results.
         :raises ConnectionError: On connection error.
         """
         return PaginatedList(self._tag_search_noiter, query=query, max_items=max_items)
@@ -3672,7 +3672,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: PaginatedList of BotBrStats objects representing the search results.
+        :returns: :class:`PaginatedList` of BotBrStats objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
         :raises ConnectionError: On connection error.
@@ -3839,7 +3839,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: PaginatedList of DailyStats objects representing the search results.
+        :returns: :class:`PaginatedList` of DailyStats objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
         :raises ConnectionError: On connection error.
