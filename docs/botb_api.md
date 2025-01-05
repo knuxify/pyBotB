@@ -136,6 +136,10 @@ Some API queries within the site's client-side JS also provide a "key" property 
     * `dream%` will match `dreamghost.it`,
     * `%dad%` will match `dads`, `asdad`, `qwertydaduiop`
 * `IN` - check if the value of the property is contained within the list provided in the operand. **The operand must be a list of values.**
+* `IN_SUBQUERY:{subquery}` - exact mechanics are not known yet. Known subqueries are:
+  * On `/api/v1/entry/list`:
+    * `id`, `IN_SUBQUERY:botbr_entry_list`, `{botbr_id}` (prop, operator, operand) - returns entries which the BotBr participated in. Used on the Entries page of a BotBr's profile
+    * `id`, `IN_SUBQUERY:botbr_favorites`, `{botbr_id}` (prop, operator, operand) - returns the favorites of the BotBr with the given ID. Used on the Favorites page of a BotBr's profile 
 * `IS`/`IS NOT` - can be used in combination with an operand of `NULL` or `NOT NULL` to check if a field is/is not NULL. All other operands are not allowed.
 
 ##### Sending list conditions
@@ -511,6 +515,7 @@ you'll see in the wild.
 This is a WIP list of quirks with the BotB API and various objects that exist within BotB's nearly 20-year-old database. These are all worked around in pyBotB; they are listed here as they could be of interest to other API implementations.
 
 * **Battle:** Battles fetched through the `/api/v1/battle/load` endpoint do not have `period` and `period_end(_*)` properties. If you need to access them, use the `list` endpoint with a filter to match for the ID.
+* **Battle:** Battles in the Tally Period do not return a `period` value (though they do have a `period_end` value).
 * **Entry:** Some older entries do not have comment threads attached to them; for those entries, the `posts` property will be missing. If you depend on it being there, you can assume that a missing `posts` property is equivalent to a `posts` value of `0`.
 * **Palette:** loading palette ID `79` crashes the site.
   * Notably, any `list` query that contains palette ID 79 will crash as well. To avoid this, add a [condition](#list-conditions) that excludes ID 79 (`id`, `<>`, `79`).
