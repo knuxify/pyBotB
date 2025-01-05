@@ -259,6 +259,8 @@ Some object types also implement additional commands. These are outlined in this
 * **On failure:**
   * **Server error** (HTTP `500`)
 
+---
+
 #### List by date (`/api/v1/battle/list_by_date/{date}`)
 
 > `GET` `/api/v1/battle/list_by_date/{date}`
@@ -275,6 +277,8 @@ Some object types also implement additional commands. These are outlined in this
 * **On failure:**
   * **Malformed parameters** (HTTP `400`) - plain-text error message, followed by `<br><br><i><b>Please RTFM</b></i><br><a href="https://battleofthebits.com/lyceum/View/BotB+API+v1/">https://battleofthebits.com/lyceum/View/BotB+API+v1/</a>`
   * **Server error** (HTTP `500`)
+
+---
 
 #### List by month (`/api/v1/battle/list_by_month/{date}`)
 
@@ -293,6 +297,8 @@ Some object types also implement additional commands. These are outlined in this
   * **Malformed parameters** (HTTP `400`) - plain-text error message, followed by `<br><br><i><b>Please RTFM</b></i><br><a href="https://battleofthebits.com/lyceum/View/BotB+API+v1/">https://battleofthebits.com/lyceum/View/BotB+API+v1/</a>`
   * **Server error** (HTTP `500`)
 
+---
+
 ### BotBr (`botbr`)
 
 #### Get level-up points (`/api/v1/botbr/levels`)
@@ -307,6 +313,8 @@ Some object types also implement additional commands. These are outlined in this
 * **On success:** (HTTP `200`) - list containing level-up point requirements.
 * **On failure:**
   * **Server error** (HTTP `500`)
+
+---
 
 ### Entry (`entry`)
 
@@ -323,6 +331,8 @@ Some object types also implement additional commands. These are outlined in this
 * **On failure:**
   * **Server error** (HTTP `500`)
 
+---
+
 #### Entry activity list (`/api/v1/entry/entry_activity_playlist`)
 
 > `GET` `/api/v1/entry/entry_activity_playlist`
@@ -335,6 +345,8 @@ Some object types also implement additional commands. These are outlined in this
 * **On success:** (HTTP `200`) - list containing recent entries.
 * **On failure:**
   * **Server error** (HTTP `500`)
+
+---
 
 #### Playlist entries (`/api/v1/entry/playlist_playlist/{playlist_id}`)
 
@@ -352,6 +364,8 @@ Some object types also implement additional commands. These are outlined in this
 * **On failure:**
   * **Playlist not found:** (HTTP `500`) - empty response (0 bytes).
   * **Server error** (HTTP `500`)
+
+---
 
 #### BotBr favorites (`/api/v1/entry/botbr_favorites_playlist/{botbr_id}`)
 
@@ -374,6 +388,8 @@ This is missing some of my favorites, TODO?
   * **Playlist not found:** (HTTP `500`) - empty response (0 bytes).
   * **Server error** (HTTP `500`)
 
+---
+
 #### Covers/entries covered in Decadent Decade battles (`/api/v1/entry/decadent_covered`)
 
 > `GET` `/api/v1/entry/decadent_covered`
@@ -390,6 +406,8 @@ The first entry is covered, the rest are covers...? TODO
 * **On success:** (HTTP `200`) - list containing entries.
 * **On failure:**
   * **Server error** (HTTP `500`)
+
+---
 
 ### Tag (`tag`)
 
@@ -410,6 +428,8 @@ The first entry is covered, the rest are covers...? TODO
 * **On failure:**
   * **Server error** (HTTP `500`)
 
+---
+
 ### Palette
 
 #### Get current default palette (`/api/v1/palette/current_default`)
@@ -423,6 +443,8 @@ The first entry is covered, the rest are covers...? TODO
 * **On success:** (HTTP `200`) - list containing a single palette object representing the current default palette.
 * **On failure:**
   * **Server error** (HTTP `500`)
+
+---
 
 ### BotBr stats (`botbr_stats`)
 
@@ -442,6 +464,8 @@ The first entry is covered, the rest are covers...? TODO
 * **On failure:**
   * **Server error** (HTTP `500`)
 
+---
+
 #### BotBr stats by BotBr ID from the last N days (`/api/v1/botbr_stats/days_back/{botbr_id}/{n_days}`)
 
 > `GET` `/api/v1/botbr_stats/days_back/{botbr_id}/{n_days}`
@@ -458,6 +482,8 @@ The first entry is covered, the rest are covers...? TODO
 * **On success:** (HTTP `200`) - list containing BotBr statistics table entries.
 * **On failure:**
   * **Server error** (HTTP `500`)
+
+---
 
 ### Other
 
@@ -480,6 +506,8 @@ you'll see in the wild.
 * **On failure:**
   * **Server error** (HTTP `500`)
 
+---
+
 #### Interpret Firki markup (`/api/v1/firki/interpret`)
 
 > `POST` `/api/v1/firki/interpret`
@@ -493,6 +521,8 @@ you'll see in the wild.
 * **On success:** (HTTP `200`) - JSON list with a single item, containing the interpreted text as a string.
 * **On failure:**
   * **Server error** (HTTP `500`)
+
+---
 
 #### Spriteshit version (`/api/v1/spriteshit/version`)
 
@@ -509,6 +539,8 @@ you'll see in the wild.
 * **On success:** (HTTP `200`) - JSON object with a single property named "spriteshit_version" containing the version as a string.
 * **On failure:**
   * **Server error** (HTTP `500`)
+
+---
 
 ## Known quirks
 
