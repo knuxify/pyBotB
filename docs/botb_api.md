@@ -517,8 +517,6 @@ This is a WIP list of quirks with the BotB API and various objects that exist wi
 * **Battle:** Battles fetched through the `/api/v1/battle/load` endpoint do not have `period` and `period_end(_*)` properties. If you need to access them, use the `list` endpoint with a filter to match for the ID.
 * **Battle:** Battles in the Tally Period do not return a `period` value (though they do have a `period_end` value).
 * **Entry:** Some older entries do not have comment threads attached to them; for those entries, the `posts` property will be missing. If you depend on it being there, you can assume that a missing `posts` property is equivalent to a `posts` value of `0`.
-* **Palette:** loading palette ID `79` crashes the site.
-  * Notably, any `list` query that contains palette ID 79 will crash as well. To avoid this, add a [condition](#list-conditions) that excludes ID 79 (`id`, `<>`, `79`).
 
 ### Documentation index quirks
 

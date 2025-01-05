@@ -2700,11 +2700,6 @@ class BotB:
         :raises ConnectionError: On connection error.
         :raises ValueError: If a provided parameter is incorrect.
         """
-        # HACK: Loading palette ID 79 crashes the API. Make sure we *don't* fetch it.
-        _conditions = [Condition("id", "<>", 79)]
-        if conditions:
-            _conditions = conditions + _conditions
-
         ret = self._list(
             "palette",
             page_number=page_number,
