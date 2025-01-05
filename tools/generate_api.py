@@ -121,7 +121,7 @@ TEMPLATE_LIST = """
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: PaginatedList of {dataclass_name} objects representing the search results.
+        :returns: :class:`PaginatedList` of {dataclass_name} objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
         :raises ConnectionError: On connection error.
@@ -160,7 +160,7 @@ TEMPLATE_SEARCH = """
         :param query: Search query for the search.
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
-        :returns: PaginatedList of {dataclass_name} objects representing the search results.
+        :returns: List of {dataclass_name} objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
         :raises ConnectionError: On connection error.
@@ -182,8 +182,11 @@ TEMPLATE_SEARCH = """
         :api: /api/v1/{object_type}/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: List of {dataclass_name} objects representing the search results. If the search
-            returned no results, the list will be empty.
+        :returns: List of {dataclass_name} objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :returns: :class:`PaginatedList` of {dataclass_name} objects representing the search results.
+                  If the search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         \"\"\"
         return PaginatedList(self._{object_type}_search_noiter, query=query, max_items=max_items)
