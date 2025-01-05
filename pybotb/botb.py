@@ -1522,12 +1522,12 @@ class Condition:
         return dataclasses.asdict(self)
 
 
-class BotBPaginatedList:
+class PaginatedList:
     """
     Iterable implementation for paginated API requests.
 
-    Automatically handles progressing to the next page, etc. Fetches as many objects
-    as possible (500 per page), unless max_items is set to a lower value.
+    Automatically handles progressing to the next page, etc. Fetches as many objects as
+    possible (500 per page), unless max_items is set to a lower value.
     """
 
     def __init__(self, func: Callable, max_items: int = 0, *args, **kwargs):
@@ -1545,7 +1545,9 @@ class BotBPaginatedList:
         self.args = args
         self.kwargs = kwargs
         if "page_number" in kwargs or "page_length" in kwargs:
-            raise ValueError("Paginated iterator does not accept page number or page length args")
+            raise ValueError(
+                "Paginated iterator does not accept page number or page length args"
+            )
 
     def __iter__(self):
         count = 0  # Count is the amount of items parsed;
@@ -1559,7 +1561,9 @@ class BotBPaginatedList:
         else:
             page_length = 500
 
-        ret = self.func(*self.args, **self.kwargs, page_number=page, page_length=page_length)
+        ret = self.func(
+            *self.args, **self.kwargs, page_number=page, page_length=page_length
+        )
         while (self.max_items == 0 or (count < self.max_items)) and len(ret) > 0:
             if index >= len(ret):
                 # If the length of the returned page is less than the max page length,
@@ -1574,7 +1578,9 @@ class BotBPaginatedList:
 
                 # Load the next page and reset the index
                 page += 1
-                ret = self.func(*self.args, **self.kwargs, page_number=page, page_length=page_length)
+                ret = self.func(
+                    *self.args, **self.kwargs, page_number=page, page_length=page_length
+                )
                 index = 0
 
             yield ret[index]
@@ -1820,7 +1826,9 @@ class BotB:
         except Exception as e:
             raise ConnectionError(ret.text) from e
 
-    # BotBr
+    #
+    # BotBrs
+    #
 
     def botbr_load(self, botbr_id: int) -> Union[BotBr, None]:
         """
@@ -1837,7 +1845,7 @@ class BotB:
 
         return BotBr.from_payload(ret)
 
-    def botbr_list(
+    def _botbr_list_noiter(
         self,
         page_number: int = 0,
         page_length: int = 25,
@@ -1847,7 +1855,7 @@ class BotB:
         conditions: Optional[List[Condition]] = None,
     ) -> List[BotBr]:
         """
-        Search for BotBrs that match the given query.
+        Search for BotBrs that match the given query (Non-PaginatedList version).
 
         For a list of supported filter/condition properties, see :py:class:`.BotBr`.
 
@@ -1881,6 +1889,42 @@ class BotB:
 
         return out
 
+    def botbr_list(
+        self,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[BotBr]:
+        """
+        Search for BotBrs that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.BotBr`.
+
+        :api: /api/v1/botbr/list
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: PaginatedList of BotBr objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        return PaginatedList(
+            self._botbr_list_noiter,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+            max_items=max_items,
+        )
+
     def botbr_random(self) -> BotBr:
         """
         Get a random BotBr.
@@ -1893,7 +1937,7 @@ class BotB:
 
         return BotBr.from_payload(ret)
 
-    def botbr_search(
+    def _botbr_search_noiter(
         self, query: str, page_number: int = 0, page_length: int = 25
     ) -> List[BotBr]:
         """
@@ -1901,8 +1945,10 @@ class BotB:
 
         :api: /api/v1/botbr/search
         :param query: Search query for the search.
-        :returns: List of BotBr objects representing the search results. If the search
-            returned no results, the list will be empty.
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :returns: PaginatedList of BotBr objects representing the search results. If the
+            search returned no results, the resulting iterable will return no results.
         :raises ConnectionError: On connection error.
         """
         ret = self._search(
@@ -1915,6 +1961,21 @@ class BotB:
 
         return out
 
+    def botbr_search(self, query: str, max_items: int = 0) -> Iterable[BotBr]:
+        """
+        Search for BotBrs that match the given query.
+
+        :api: /api/v1/botbr/search
+        :param query: Search query for the search.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: List of BotBr objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        return PaginatedList(
+            self._botbr_search_noiter, query=query, max_items=max_items
+        )
+
     def botbr_get_id_for_username(self, username: str) -> Union[int, None]:
         """
         Get the ID of a BotBr by their username.
@@ -1923,11 +1984,7 @@ class BotB:
         :returns: int containing the ID, or None if the user is not found.
         :raises ConnectionError: On connection error.
         """
-        ret = self.botbr_search(username)
-        if ret is None:
-            return None
-
-        for user in ret:
+        for user in self.botbr_list(filters={"name": username}):
             if user.name == username:
                 return user.id
 
@@ -1941,11 +1998,11 @@ class BotB:
         :returns: BotBr object representing the user, or None if the user is not found.
         :raises ConnectionError: On connection error.
         """
-        ret = self.botbr_search(username)
-        if ret is None:
-            return None
+        for user in self.botbr_list(filters={"name": username}):
+            if user.name == username:
+                return user
 
-        return ret[0]
+        return None
 
     def botbr_get_favorite_entries(
         self,
@@ -1996,7 +2053,7 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
-    ) -> BotBPaginatedList:
+    ) -> PaginatedList:
         """
         List all palettes created by the BotBr with the given ID.
 
@@ -2020,229 +2077,12 @@ class BotB:
         if filters is not None:
             _filters = filters | _filters
 
-        return BotBPaginatedList(
-            self.palette_list,
+        return self.palette_list(
             sort=sort or "id",
             desc=desc,
             filters=_filters,
             conditions=conditions,
-            max_items=max_items
-        )
-
-    #
-    # Entry
-    #
-
-    def entry_load(self, entry_id: int) -> Union[Entry, None]:
-        """
-        Load an entry's info by its ID.
-
-        :api: /api/v1/entry/load
-        :param entry_id: ID of the entry to load.
-        :returns: entry object representing the user, or None if the user is not found.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._load("entry", entry_id)
-        if ret is None:
-            return None
-
-        return Entry.from_payload(ret)
-
-    def entry_list(
-        self,
-        page_number: int = 0,
-        page_length: int = 25,
-        desc: bool = False,
-        sort: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        conditions: Optional[List[Condition]] = None,
-    ) -> List[Entry]:
-        """
-        Search for entries that match the given query.
-
-        For a list of supported filter/condition properties, see :py:class:`.Entry`.
-
-        :api: /api/v1/entry/list
-        :param page_number: Number of the list page, for pagination.
-        :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order. Requires sort key to be set.
-        :param sort: Object property to sort by.
-        :param filters: Dictionary with object property as the key and filter value
-                        as the value. Note that filters are deprecated; conditions
-                        should be used instead.
-        :param conditions: List of Condition objects containing list conditions.
-        :returns: List of entry objects representing the search results. If the
-                  search returned no results, the list will be empty.
-        :raises ConnectionError: On connection error.
-        :raises ValueError: If a provided parameter is incorrect.
-        """
-        ret = self._list(
-            "entry",
-            page_number=page_number,
-            page_length=page_length,
-            desc=desc,
-            sort=sort,
-            filters=filters,
-            conditions=conditions,
-        )
-
-        out = []
-        for payload in ret:
-            out.append(Entry.from_payload(payload))
-
-        return out
-
-    def entry_random(self) -> Entry:
-        """
-        Get a random entry.
-
-        :api: /api/v1/entry/random
-        :returns: entry object representing the user.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._random("entry")
-
-        return Entry.from_payload(ret)
-
-    def entry_search(
-        self, query: str, page_number: int = 0, page_length: int = 25
-    ) -> List[Entry]:
-        """
-        Search for entries that match the given query.
-
-        :api: /api/v1/entry/search
-        :param query: Search query for the search.
-        :returns: List of entry objects representing the search results. If the search
-            returned no results, the list will be empty.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._search(
-            "entry", query, page_number=page_number, page_length=page_length
-        )
-
-        out = []
-        for payload in ret:
-            out.append(Entry.from_payload(payload))
-
-        return out
-
-    def entry_get_tags(
-        self,
-        entry_id: int,
-        desc: bool = False,
-        sort: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        conditions: Optional[List[Condition]] = None,
-        max_items: int = 0,
-    ) -> Iterable[Tag]:
-        """
-        List all tags given to entry with the given ID.
-
-        Convinience shorthand for `:py:method:.BotB.tag_list` which pre-fills the
-        filters to search for the entry and automatically aggregates all results pages.
-
-        :param entry_id: ID of the entry to get tags for.
-        :param desc: If True, returns items in descending order. Requires sort key to be
-            set.
-        :param sort: Object property to sort by.
-        :param filters: Dictionary with object property as the key and filter value as
-            the value. Note that filters are deprecated; conditions should be used
-            instead.
-        :param conditions: List of Condition objects containing list conditions.
-        :param max_items: Maximum number of items to return; set to 0 for no limit.
-        :returns: List of Tag objects representing the search results. If the search
-            returned no results, the list will be empty.
-        :raises ConnectionError: On connection error.
-        """
-        _filters = {"entry_id": entry_id}
-        if filters is not None:
-            _filters = filters | _filters
-
-        return BotBPaginatedList(
-            self.tag_list,
-            sort=sort or "id",
-            desc=desc,
-            filters=_filters,
-            conditions=conditions,
-            max_items=max_items
-        )
-
-    def entry_get_playlist_ids(self, entry_id: int, max_items: int = 0) -> List[int]:
-        """
-        Get a list containing the playlist IDs of playlists that this entry has been
-        added to.
-
-        To get a list of Playlist objects, see `:method:.BotBr.entry_get_playlists`.
-
-        :param entry_id: ID of the entry to load the playlists of.
-        :param max_items: Maximum number of items to return; set to 0 for no limit.
-        :returns: List of playlist IDs.
-        :raises ConnectionError: On connection error.
-        """
-        ret = BotBPaginatedList(
-            self.playlist_to_entry_list, filters={"entry_id": entry_id}, max_items=max_items
-        )
-        if not ret:
-            return []
-
-        return [p.playlist_id for p in ret]
-
-    def entry_get_playlists(self, entry_id: int, max_items: int = 0) -> Iterable[Playlist]:
-        """
-        Get a list of playlists that this entry has been added to.
-
-        :param entry_id: ID of the playlist to load the entries of.
-        :param max_items: Maximum number of items to return; set to 0 for no limit.
-        :returns: List of Playlist objects.
-        :raises ConnectionError: On connection error.
-        """
-        playlist_ids = self.entry_get_playlist_ids(entry_id, max_items=max_items)
-
-        condition = Condition("id", "IN", playlist_ids)
-
-        return BotBPaginatedList(
-            self.playlist_list, sort="id", conditions=[condition], max_items=max_items
-        )
-
-    def entry_get_favorites(
-        self,
-        entry_id: int,
-        desc: bool = False,
-        sort: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        conditions: Optional[List[Condition]] = None,
-        max_items: int = 0
-    ) -> Iterable[Favorite]:
-        """
-        List all favorites for the entry with the given ID.
-
-        Convinience shorthand for `:py:method:.BotB.favorite_list` which pre-fills the
-        filters to search for the entry and automatically aggregates all results pages.
-
-        :param entry_id: ID of the entry to get favorites for.
-        :param desc: If True, returns items in descending order. Requires sort key to be
-            set.
-        :param sort: Object property to sort by.
-        :param filters: Dictionary with object property as the key and filter value as
-            the value. Note that filters are deprecated; conditions should be used
-            instead.
-        :param conditions: List of Condition objects containing list conditions.
-        :param max_items: Maximum number of items to return; set to 0 for no limit.
-        :returns: List of Favorite objects representing the search results. If the
-            search returned no results, the list will be empty.
-        :raises ConnectionError: On connection error.
-        """
-        _filters = {"entry_id": entry_id}
-        if filters is not None:
-            _filters = filters | _filters
-
-        return BotBPaginatedList(
-            self.favorite_list,
-            sort=sort or "id",
-            desc=desc,
-            filters=_filters,
-            conditions=conditions,
-            max_items=max_items
+            max_items=max_items,
         )
 
     #
@@ -2280,7 +2120,7 @@ class BotB:
 
         return Battle.from_payload(ret_load)
 
-    def battle_list(
+    def _battle_list_noiter(
         self,
         page_number: int = 0,
         page_length: int = 25,
@@ -2290,7 +2130,7 @@ class BotB:
         conditions: Optional[List[Condition]] = None,
     ) -> List[Battle]:
         """
-        Search for battles that match the given query.
+        Search for battles that match the given query (Non-PaginatedList version).
 
         For a list of supported filter/condition properties, see :py:class:`.Battle`.
 
@@ -2324,19 +2164,55 @@ class BotB:
 
         return out
 
+    def battle_list(
+        self,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[Battle]:
+        """
+        Search for battles that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.Battle`.
+
+        :api: /api/v1/battle/list
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: PaginatedList of Battle objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        return PaginatedList(
+            self._battle_list_noiter,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+            max_items=max_items,
+        )
+
     def battle_random(self) -> Battle:
         """
         Get a random battle.
 
         :api: /api/v1/battle/random
-        :returns: Battle object representing the battle.
+        :returns: Battle object representing the user.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("battle")
 
         return Battle.from_payload(ret)
 
-    def battle_search(
+    def _battle_search_noiter(
         self, query: str, page_number: int = 0, page_length: int = 25
     ) -> List[Battle]:
         """
@@ -2344,8 +2220,11 @@ class BotB:
 
         :api: /api/v1/battle/search
         :param query: Search query for the search.
-        :returns: List of Battle objects representing the search results. If the search
-            returned no results, the list will be empty.
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :returns: PaginatedList of Battle objects representing the search results. If
+            the search returned no results, the resulting iterable will return no
+            results.
         :raises ConnectionError: On connection error.
         """
         ret = self._search(
@@ -2357,6 +2236,21 @@ class BotB:
             out.append(Battle.from_payload(payload))
 
         return out
+
+    def battle_search(self, query: str, max_items: int = 0) -> Iterable[Battle]:
+        """
+        Search for battles that match the given query.
+
+        :api: /api/v1/battle/search
+        :param query: Search query for the search.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: List of Battle objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        return PaginatedList(
+            self._battle_search_noiter, query=query, max_items=max_items
+        )
 
     def battle_current(self) -> List[Battle]:
         """
@@ -2382,12 +2276,283 @@ class BotB:
         return out
 
     #
+    # Entries
+    #
+
+    def entry_load(self, entry_id: int) -> Union[Entry, None]:
+        """
+        Load a entry's info by their ID.
+
+        :api: /api/v1/entry/load
+        :param entry_id: ID of the entry to load.
+        :returns: Entry object representing the user, or None if the user is not found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._load("entry", entry_id)
+        if ret is None:
+            return None
+
+        return Entry.from_payload(ret)
+
+    def _entry_list_noiter(
+        self,
+        page_number: int = 0,
+        page_length: int = 25,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[Entry]:
+        """
+        Search for entries that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.Entry`.
+
+        :api: /api/v1/entry/list
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of Entry objects representing the search results. If the
+                  search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        ret = self._list(
+            "entry",
+            page_number=page_number,
+            page_length=page_length,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+        )
+
+        out = []
+        for payload in ret:
+            out.append(Entry.from_payload(payload))
+
+        return out
+
+    def entry_list(
+        self,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[Entry]:
+        """
+        Search for entries that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.Entry`.
+
+        :api: /api/v1/entry/list
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: PaginatedList of Entry objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        return PaginatedList(
+            self._entry_list_noiter,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+            max_items=max_items,
+        )
+
+    def entry_random(self) -> Entry:
+        """
+        Get a random entry.
+
+        :api: /api/v1/entry/random
+        :returns: Entry object representing the user.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._random("entry")
+
+        return Entry.from_payload(ret)
+
+    def _entry_search_noiter(
+        self, query: str, page_number: int = 0, page_length: int = 25
+    ) -> List[Entry]:
+        """
+        Search for entries that match the given query.
+
+        :api: /api/v1/entry/search
+        :param query: Search query for the search.
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :returns: PaginatedList of Entry objects representing the search results. If the
+            search returned no results, the resulting iterable will return no results.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._search(
+            "entry", query, page_number=page_number, page_length=page_length
+        )
+
+        out = []
+        for payload in ret:
+            out.append(Entry.from_payload(payload))
+
+        return out
+
+    def entry_search(self, query: str, max_items: int = 0) -> Iterable[Entry]:
+        """
+        Search for entries that match the given query.
+
+        :api: /api/v1/entry/search
+        :param query: Search query for the search.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: List of Entry objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        return PaginatedList(
+            self._entry_search_noiter, query=query, max_items=max_items
+        )
+
+    def entry_get_tags(
+        self,
+        entry_id: int,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[Tag]:
+        """
+        List all tags given to entry with the given ID.
+
+        Convinience shorthand for `:py:method:.BotB.tag_list` which pre-fills the
+        filters to search for the entry and automatically aggregates all results pages.
+
+        :param entry_id: ID of the entry to get tags for.
+        :param desc: If True, returns items in descending order. Requires sort key to be
+            set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value as
+            the value. Note that filters are deprecated; conditions should be used
+            instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum number of items to return; set to 0 for no limit.
+        :returns: List of Tag objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        _filters = {"entry_id": entry_id}
+        if filters is not None:
+            _filters = filters | _filters
+
+        return self.tag_list(
+            sort=sort or "id",
+            desc=desc,
+            filters=_filters,
+            conditions=conditions,
+            max_items=max_items,
+        )
+
+    def entry_get_playlist_ids(self, entry_id: int, max_items: int = 0) -> List[int]:
+        """
+        Get a list containing the playlist IDs of playlists that this entry has been
+        added to.
+
+        To get a list of Playlist objects, see `:method:.BotBr.entry_get_playlists`.
+
+        :param entry_id: ID of the entry to load the playlists of.
+        :param max_items: Maximum number of items to return; set to 0 for no limit.
+        :returns: List of playlist IDs.
+        :raises ConnectionError: On connection error.
+        """
+        ret = PaginatedList(
+            self.playlist_to_entry_list,
+            filters={"entry_id": entry_id},
+            max_items=max_items,
+        )
+        if not ret:
+            return []
+
+        return [p.playlist_id for p in ret]
+
+    def entry_get_playlists(
+        self, entry_id: int, max_items: int = 0
+    ) -> Iterable[Playlist]:
+        """
+        Get a list of playlists that this entry has been added to.
+
+        :param entry_id: ID of the playlist to load the entries of.
+        :param max_items: Maximum number of items to return; set to 0 for no limit.
+        :returns: List of Playlist objects.
+        :raises ConnectionError: On connection error.
+        """
+        playlist_ids = self.entry_get_playlist_ids(entry_id, max_items=max_items)
+
+        condition = Condition("id", "IN", playlist_ids)
+
+        return self.playlist_list(
+            sort="id", conditions=[condition], max_items=max_items
+        )
+
+    def entry_get_favorites(
+        self,
+        entry_id: int,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[Favorite]:
+        """
+        List all favorites for the entry with the given ID.
+
+        Convinience shorthand for `:py:method:.BotB.favorite_list` which pre-fills the
+        filters to search for the entry and automatically aggregates all results pages.
+
+        :param entry_id: ID of the entry to get favorites for.
+        :param desc: If True, returns items in descending order. Requires sort key to be
+            set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value as
+            the value. Note that filters are deprecated; conditions should be used
+            instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum number of items to return; set to 0 for no limit.
+        :returns: List of Favorite objects representing the search results. If the
+            search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        _filters = {"entry_id": entry_id}
+        if filters is not None:
+            _filters = filters | _filters
+
+        return self.favorite_list(
+            sort=sort or "id",
+            desc=desc,
+            filters=_filters,
+            conditions=conditions,
+            max_items=max_items,
+        )
+
+    #
     # Favorites
     #
 
     def favorite_load(self, favorite_id: int) -> Union[Favorite, None]:
         """
-        Load a favorite's info by its ID.
+        Load a favorite's info by their ID.
 
         :api: /api/v1/favorite/load
         :param favorite_id: ID of the favorite to load.
@@ -2401,7 +2566,7 @@ class BotB:
 
         return Favorite.from_payload(ret)
 
-    def favorite_list(
+    def _favorite_list_noiter(
         self,
         page_number: int = 0,
         page_length: int = 25,
@@ -2411,7 +2576,7 @@ class BotB:
         conditions: Optional[List[Condition]] = None,
     ) -> List[Favorite]:
         """
-        Search for favorites that match the given query.
+        Search for favorites that match the given query (Non-PaginatedList version).
 
         For a list of supported filter/condition properties, see :py:class:`.Favorite`.
 
@@ -2445,12 +2610,48 @@ class BotB:
 
         return out
 
+    def favorite_list(
+        self,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[Favorite]:
+        """
+        Search for favorites that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.Favorite`.
+
+        :api: /api/v1/favorite/list
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: PaginatedList of Favorite objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        return PaginatedList(
+            self._favorite_list_noiter,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+            max_items=max_items,
+        )
+
     def favorite_random(self) -> Favorite:
         """
         Get a random favorite.
 
         :api: /api/v1/favorite/random
-        :returns: Favorite object representing the favorite.
+        :returns: Favorite object representing the user.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("favorite")
@@ -2458,302 +2659,12 @@ class BotB:
         return Favorite.from_payload(ret)
 
     #
-    # Group threads
-    #
-
-    def group_thread_load(self, group_thread_id: int) -> Union[GroupThread, None]:
-        """
-        Load a group thread's info by its ID.
-
-        :api: /api/v1/group_thread/load
-        :param group_thread_id: ID of the group_thread to load.
-        :returns: GroupThread object representing the user, or None if the user is not
-            found.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._load("group_thread", group_thread_id)
-        if ret is None:
-            return None
-
-        return GroupThread.from_payload(ret)
-
-    def group_thread_list(
-        self,
-        page_number: int = 0,
-        page_length: int = 25,
-        desc: bool = False,
-        sort: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        conditions: Optional[List[Condition]] = None,
-    ) -> List[GroupThread]:
-        """
-        Search for group threads that match the given query.
-
-        For a list of supported filter/condition properties, see :py:class:`.GroupThread`.
-
-        :api: /api/v1/group_thread/list
-        :param page_number: Number of the list page, for pagination.
-        :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order. Requires sort key to be set.
-        :param sort: Object property to sort by.
-        :param filters: Dictionary with object property as the key and filter value
-                        as the value. Note that filters are deprecated; conditions
-                        should be used instead.
-        :param conditions: List of Condition objects containing list conditions.
-        :returns: List of GroupThread objects representing the search results. If the
-                  search returned no results, the list will be empty.
-        :raises ConnectionError: On connection error.
-        :raises ValueError: If a provided parameter is incorrect.
-        """
-        ret = self._list(
-            "group_thread",
-            page_number=page_number,
-            page_length=page_length,
-            desc=desc,
-            sort=sort,
-            filters=filters,
-            conditions=conditions,
-        )
-
-        out = []
-        for payload in ret:
-            out.append(GroupThread.from_payload(payload))
-
-        return out
-
-    def group_thread_random(self) -> GroupThread:
-        """
-        Get a random group thread.
-
-        :api: /api/v1/group_thread/random
-        :returns: GroupThread object representing the group_thread.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._random("group_thread")
-
-        return GroupThread.from_payload(ret)
-
-    def group_thread_search(
-        self, query: str, page_number: int = 0, page_length: int = 25
-    ) -> List[GroupThread]:
-        """
-        Search for group threads that match the given query.
-
-        :api: /api/v1/group_thread/search
-        :param query: Search query for the search.
-        :returns: List of GroupThread objects representing the search results. If the
-            search returned no results, the list will be empty.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._search(
-            "group_thread", query, page_number=page_number, page_length=page_length
-        )
-
-        out = []
-        for payload in ret:
-            out.append(GroupThread.from_payload(payload))
-
-        return out
-
-    #
-    # Tags
-    #
-
-    def tag_load(self, tag_id: int) -> Union[Tag, None]:
-        """
-        Load a tag's info by its ID.
-
-        :api: /api/v1/tag/load
-        :param tag_id: ID of the tag to load.
-        :returns: Tag object representing the user, or None if the user is not found.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._load("tag", tag_id)
-        if ret is None:
-            return None
-
-        return Tag.from_payload(ret)
-
-    def tag_list(
-        self,
-        page_number: int = 0,
-        page_length: int = 25,
-        desc: bool = False,
-        sort: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        conditions: Optional[List[Condition]] = None,
-    ) -> List[Tag]:
-        """
-        Search for tags that match the given query.
-
-        For a list of supported filter/condition properties, see :py:class:`.Tag`.
-
-        :api: /api/v1/tag/list
-        :param page_number: Number of the list page, for pagination.
-        :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order. Requires sort key to be set.
-        :param sort: Object property to sort by.
-        :param filters: Dictionary with object property as the key and filter value
-                        as the value. Note that filters are deprecated; conditions
-                        should be used instead.
-        :param conditions: List of Condition objects containing list conditions.
-        :returns: List of Tag objects representing the search results. If the
-                  search returned no results, the list will be empty.
-        :raises ConnectionError: On connection error.
-        :raises ValueError: If a provided parameter is incorrect.
-        """
-        ret = self._list(
-            "tag",
-            page_number=page_number,
-            page_length=page_length,
-            desc=desc,
-            sort=sort,
-            filters=filters,
-            conditions=conditions,
-        )
-
-        out = []
-        for payload in ret:
-            out.append(Tag.from_payload(payload))
-
-        return out
-
-    def tag_random(self) -> Tag:
-        """
-        Get a random tag.
-
-        :api: /api/v1/tag/random
-        :returns: Tag object representing the tag.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._random("tag")
-
-        return Tag.from_payload(ret)
-
-    def tag_search(
-        self, query: str, page_number: int = 0, page_length: int = 25
-    ) -> List[Tag]:
-        """
-        Search for tags that match the given query.
-
-        :api: /api/v1/tag/search
-        :param query: Search query for the search.
-        :returns: List of Tag objects representing the search results. If the search
-            returned no results, the list will be empty.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._search(
-            "tag", query, page_number=page_number, page_length=page_length
-        )
-
-        out = []
-        for payload in ret:
-            out.append(Tag.from_payload(payload))
-
-        return out
-
-    #
-    # Palettes
-    #
-
-    def palette_load(self, palette_id: int) -> Union[Palette, None]:
-        """
-        Load a palette's info by its ID.
-
-        :api: /api/v1/palette/load
-        :param palette_id: ID of the palette to load.
-        :returns: Palette object representing the user, or None if the user is not
-            found.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._load("palette", palette_id)
-        if ret is None:
-            return None
-
-        return Palette.from_payload(ret)
-
-    def palette_list(
-        self,
-        page_number: int = 0,
-        page_length: int = 25,
-        desc: bool = False,
-        sort: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        conditions: Optional[List[Condition]] = None,
-    ) -> List[Palette]:
-        """
-        Search for palettes that match the given query.
-
-        For a list of supported filter/condition properties, see :py:class:`.Palette`.
-
-        :api: /api/v1/palette/list
-        :param page_number: Number of the list page, for pagination.
-        :param page_length: Length of the list page, for pagination (max. 250).
-        :param desc: If True, returns items in descending order. Requires sort key to be set.
-        :param sort: Object property to sort by.
-        :param filters: Dictionary with object property as the key and filter value
-                        as the value. Note that filters are deprecated; conditions
-                        should be used instead.
-        :param conditions: List of Condition objects containing list conditions.
-        :returns: List of Palette objects representing the search results. If the
-                  search returned no results, the list will be empty.
-        :raises ConnectionError: On connection error.
-        :raises ValueError: If a provided parameter is incorrect.
-        """
-        ret = self._list(
-            "palette",
-            page_number=page_number,
-            page_length=page_length,
-            desc=desc,
-            sort=sort,
-            filters=filters,
-            conditions=_conditions,
-        )
-
-        out = []
-        for payload in ret:
-            out.append(Palette.from_payload(payload))
-
-        return out
-
-    def palette_random(self) -> Palette:
-        """
-        Get a random palette.
-
-        :api: /api/v1/palette/random
-        :returns: Palette object representing the palette.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._random("palette")
-
-        return Palette.from_payload(ret)
-
-    def palette_current_default(self) -> Palette:
-        """
-        Get the current default on-site palette.
-
-        :api: /api/v1/palette/current_default
-        :returns: Palette object representing the current default palette.
-        :raises ConnectionError: On connection error.
-        """
-        ret = self._s.get("https://battleofthebits.com/api/v1/palette/current_default")
-        if ret.status_code != 200:
-            raise ConnectionError(f"{ret.status_code}: {ret.text}")
-
-        try:
-            palette_json = ret.json()[0]
-        except Exception as e:
-            raise ConnectionError(ret.text) from e
-
-        return Palette.from_payload(palette_json)
-
-    #
     # Formats
     #
 
     def format_load(self, format_id: int) -> Union[Format, None]:
         """
-        Load a format's info by its ID.
+        Load a format's info by their ID.
 
         :api: /api/v1/format/load
         :param format_id: ID of the format to load.
@@ -2766,7 +2677,7 @@ class BotB:
 
         return Format.from_payload(ret)
 
-    def format_list(
+    def _format_list_noiter(
         self,
         page_number: int = 0,
         page_length: int = 25,
@@ -2776,7 +2687,7 @@ class BotB:
         conditions: Optional[List[Condition]] = None,
     ) -> List[Format]:
         """
-        Search for formats that match the given query.
+        Search for formats that match the given query (Non-PaginatedList version).
 
         For a list of supported filter/condition properties, see :py:class:`.Format`.
 
@@ -2810,12 +2721,48 @@ class BotB:
 
         return out
 
+    def format_list(
+        self,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[Format]:
+        """
+        Search for formats that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.Format`.
+
+        :api: /api/v1/format/list
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: PaginatedList of Format objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        return PaginatedList(
+            self._format_list_noiter,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+            max_items=max_items,
+        )
+
     def format_random(self) -> Format:
         """
         Get a random format.
 
         :api: /api/v1/format/random
-        :returns: Format object representing the format.
+        :returns: Format object representing the user.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("format")
@@ -2823,12 +2770,453 @@ class BotB:
         return Format.from_payload(ret)
 
     #
+    # Group threads
+    #
+
+    def group_thread_load(self, group_thread_id: int) -> Union[GroupThread, None]:
+        """
+        Load a group thread's info by their ID.
+
+        :api: /api/v1/group_thread/load
+        :param group_thread_id: ID of the group_thread to load.
+        :returns: GroupThread object representing the user, or None if the user is not
+            found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._load("group_thread", group_thread_id)
+        if ret is None:
+            return None
+
+        return GroupThread.from_payload(ret)
+
+    def _group_thread_list_noiter(
+        self,
+        page_number: int = 0,
+        page_length: int = 25,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[GroupThread]:
+        """
+        Search for group threads that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.GroupThread`.
+
+        :api: /api/v1/group_thread/list
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of GroupThread objects representing the search results. If the
+                  search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        ret = self._list(
+            "group_thread",
+            page_number=page_number,
+            page_length=page_length,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+        )
+
+        out = []
+        for payload in ret:
+            out.append(GroupThread.from_payload(payload))
+
+        return out
+
+    def group_thread_list(
+        self,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[GroupThread]:
+        """
+        Search for group threads that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.GroupThread`.
+
+        :api: /api/v1/group_thread/list
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: PaginatedList of GroupThread objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        return PaginatedList(
+            self._group_thread_list_noiter,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+            max_items=max_items,
+        )
+
+    def group_thread_random(self) -> GroupThread:
+        """
+        Get a random group thread.
+
+        :api: /api/v1/group_thread/random
+        :returns: GroupThread object representing the user.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._random("group_thread")
+
+        return GroupThread.from_payload(ret)
+
+    def _group_thread_search_noiter(
+        self, query: str, page_number: int = 0, page_length: int = 25
+    ) -> List[GroupThread]:
+        """
+        Search for group threads that match the given query.
+
+        :api: /api/v1/group_thread/search
+        :param query: Search query for the search.
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :returns: PaginatedList of GroupThread objects representing the search results.
+            If the search returned no results, the resulting iterable will return no
+            results.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._search(
+            "group_thread", query, page_number=page_number, page_length=page_length
+        )
+
+        out = []
+        for payload in ret:
+            out.append(GroupThread.from_payload(payload))
+
+        return out
+
+    def group_thread_search(
+        self, query: str, max_items: int = 0
+    ) -> Iterable[GroupThread]:
+        """
+        Search for group threads that match the given query.
+
+        :api: /api/v1/group_thread/search
+        :param query: Search query for the search.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: List of GroupThread objects representing the search results. If the
+            search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        return PaginatedList(
+            self._group_thread_search_noiter, query=query, max_items=max_items
+        )
+
+    #
+    # Lyceum articles
+    #
+
+    def lyceum_article_load(self, lyceum_article_id: int) -> Union[LyceumArticle, None]:
+        """
+        Load a lyceum article's info by their ID.
+
+        :api: /api/v1/lyceum_article/load
+        :param lyceum_article_id: ID of the lyceum_article to load.
+        :returns: LyceumArticle object representing the user, or None if the user is not
+            found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._load("lyceum_article", lyceum_article_id)
+        if ret is None:
+            return None
+
+        return LyceumArticle.from_payload(ret)
+
+    def _lyceum_article_list_noiter(
+        self,
+        page_number: int = 0,
+        page_length: int = 25,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[LyceumArticle]:
+        """
+        Search for lyceum articles that match the given query (Non-PaginatedList
+        version).
+
+        For a list of supported filter/condition properties, see :py:class:`.LyceumArticle`.
+
+        :api: /api/v1/lyceum_article/list
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of LyceumArticle objects representing the search results. If the
+                  search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        ret = self._list(
+            "lyceum_article",
+            page_number=page_number,
+            page_length=page_length,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+        )
+
+        out = []
+        for payload in ret:
+            out.append(LyceumArticle.from_payload(payload))
+
+        return out
+
+    def lyceum_article_list(
+        self,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[LyceumArticle]:
+        """
+        Search for lyceum articles that match the given query (Non-PaginatedList
+        version).
+
+        For a list of supported filter/condition properties, see :py:class:`.LyceumArticle`.
+
+        :api: /api/v1/lyceum_article/list
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: PaginatedList of LyceumArticle objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        return PaginatedList(
+            self._lyceum_article_list_noiter,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+            max_items=max_items,
+        )
+
+    def lyceum_article_random(self) -> LyceumArticle:
+        """
+        Get a random lyceum article.
+
+        :api: /api/v1/lyceum_article/random
+        :returns: LyceumArticle object representing the user.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._random("lyceum_article")
+
+        return LyceumArticle.from_payload(ret)
+
+    def _lyceum_article_search_noiter(
+        self, query: str, page_number: int = 0, page_length: int = 25
+    ) -> List[LyceumArticle]:
+        """
+        Search for lyceum articles that match the given query.
+
+        :api: /api/v1/lyceum_article/search
+        :param query: Search query for the search.
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :returns: PaginatedList of LyceumArticle objects representing the search
+            results. If the search returned no results, the resulting iterable will
+            return no results.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._search(
+            "lyceum_article", query, page_number=page_number, page_length=page_length
+        )
+
+        out = []
+        for payload in ret:
+            out.append(LyceumArticle.from_payload(payload))
+
+        return out
+
+    def lyceum_article_search(
+        self, query: str, max_items: int = 0
+    ) -> Iterable[LyceumArticle]:
+        """
+        Search for lyceum articles that match the given query.
+
+        :api: /api/v1/lyceum_article/search
+        :param query: Search query for the search.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: List of LyceumArticle objects representing the search results. If the
+            search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        return PaginatedList(
+            self._lyceum_article_search_noiter, query=query, max_items=max_items
+        )
+
+    #
+    # Palettes
+    #
+
+    def palette_load(self, palette_id: int) -> Union[Palette, None]:
+        """
+        Load a palette's info by their ID.
+
+        :api: /api/v1/palette/load
+        :param palette_id: ID of the palette to load.
+        :returns: Palette object representing the user, or None if the user is not
+            found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._load("palette", palette_id)
+        if ret is None:
+            return None
+
+        return Palette.from_payload(ret)
+
+    def _palette_list_noiter(
+        self,
+        page_number: int = 0,
+        page_length: int = 25,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[Palette]:
+        """
+        Search for palettes that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.Palette`.
+
+        :api: /api/v1/palette/list
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of Palette objects representing the search results. If the
+                  search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        ret = self._list(
+            "palette",
+            page_number=page_number,
+            page_length=page_length,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+        )
+
+        out = []
+        for payload in ret:
+            out.append(Palette.from_payload(payload))
+
+        return out
+
+    def palette_list(
+        self,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[Palette]:
+        """
+        Search for palettes that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.Palette`.
+
+        :api: /api/v1/palette/list
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: PaginatedList of Palette objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        return PaginatedList(
+            self._palette_list_noiter,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+            max_items=max_items,
+        )
+
+    def palette_random(self) -> Palette:
+        """
+        Get a random palette.
+
+        :api: /api/v1/palette/random
+        :returns: Palette object representing the user.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._random("palette")
+
+        return Palette.from_payload(ret)
+
+    def palette_current_default(self) -> Palette:
+        """
+        Get the current default on-site palette.
+
+        :api: /api/v1/palette/current_default
+        :returns: Palette object representing the current default palette.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._s.get("https://battleofthebits.com/api/v1/palette/current_default")
+        if ret.status_code != 200:
+            raise ConnectionError(f"{ret.status_code}: {ret.text}")
+
+        try:
+            palette_json = ret.json()[0]
+        except Exception as e:
+            raise ConnectionError(ret.text) from e
+
+        return Palette.from_payload(palette_json)
+
+    #
     # Playlists
     #
 
     def playlist_load(self, playlist_id: int) -> Union[Playlist, None]:
         """
-        Load a playlist's info by its ID.
+        Load a playlist's info by their ID.
 
         :api: /api/v1/playlist/load
         :param playlist_id: ID of the playlist to load.
@@ -2842,7 +3230,7 @@ class BotB:
 
         return Playlist.from_payload(ret)
 
-    def playlist_list(
+    def _playlist_list_noiter(
         self,
         page_number: int = 0,
         page_length: int = 25,
@@ -2852,7 +3240,7 @@ class BotB:
         conditions: Optional[List[Condition]] = None,
     ) -> List[Playlist]:
         """
-        Search for playlists that match the given query.
+        Search for playlists that match the given query (Non-PaginatedList version).
 
         For a list of supported filter/condition properties, see :py:class:`.Playlist`.
 
@@ -2886,19 +3274,55 @@ class BotB:
 
         return out
 
+    def playlist_list(
+        self,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[Playlist]:
+        """
+        Search for playlists that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.Playlist`.
+
+        :api: /api/v1/playlist/list
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: PaginatedList of Playlist objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        return PaginatedList(
+            self._playlist_list_noiter,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+            max_items=max_items,
+        )
+
     def playlist_random(self) -> Playlist:
         """
         Get a random playlist.
 
         :api: /api/v1/playlist/random
-        :returns: Playlist object representing the playlist.
+        :returns: Playlist object representing the user.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("playlist")
 
         return Playlist.from_payload(ret)
 
-    def playlist_search(
+    def _playlist_search_noiter(
         self, query: str, page_number: int = 0, page_length: int = 25
     ) -> List[Playlist]:
         """
@@ -2906,8 +3330,11 @@ class BotB:
 
         :api: /api/v1/playlist/search
         :param query: Search query for the search.
-        :returns: List of Playlist objects representing the search results. If the
-            search returned no results, the list will be empty.
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :returns: PaginatedList of Playlist objects representing the search results. If
+            the search returned no results, the resulting iterable will return no
+            results.
         :raises ConnectionError: On connection error.
         """
         ret = self._search(
@@ -2919,6 +3346,21 @@ class BotB:
             out.append(Playlist.from_payload(payload))
 
         return out
+
+    def playlist_search(self, query: str, max_items: int = 0) -> Iterable[Playlist]:
+        """
+        Search for playlists that match the given query.
+
+        :api: /api/v1/playlist/search
+        :param query: Search query for the search.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: List of Playlist objects representing the search results. If the
+            search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        return PaginatedList(
+            self._playlist_search_noiter, query=query, max_items=max_items
+        )
 
     def playlist_to_entry_list(
         self,
@@ -2978,7 +3420,7 @@ class BotB:
         :returns: List of entry IDs.
         :raises ConnectionError: On connection error.
         """
-        ret = BotBPaginatedList(
+        ret = PaginatedList(
             self.playlist_to_entry_list, filters={"playlist_id": playlist_id}
         )
         if not ret:
@@ -3014,26 +3456,25 @@ class BotB:
         return out
 
     #
-    # Lyceum articles
+    # Tags
     #
 
-    def lyceum_article_load(self, lyceum_article_id: int) -> Union[LyceumArticle, None]:
+    def tag_load(self, tag_id: int) -> Union[Tag, None]:
         """
-        Load a lyceum article's info by its ID.
+        Load a tag's info by their ID.
 
-        :api: /api/v1/lyceum_article/load
-        :param lyceum_article_id: ID of the lyceum article to load.
-        :returns: LyceumArticle object representing the user, or None if the user is not
-            found.
+        :api: /api/v1/tag/load
+        :param tag_id: ID of the tag to load.
+        :returns: Tag object representing the user, or None if the user is not found.
         :raises ConnectionError: On connection error.
         """
-        ret = self._load("lyceum_article", lyceum_article_id)
+        ret = self._load("tag", tag_id)
         if ret is None:
             return None
 
-        return LyceumArticle.from_payload(ret)
+        return Tag.from_payload(ret)
 
-    def lyceum_article_list(
+    def _tag_list_noiter(
         self,
         page_number: int = 0,
         page_length: int = 25,
@@ -3041,13 +3482,13 @@ class BotB:
         sort: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
-    ) -> List[LyceumArticle]:
+    ) -> List[Tag]:
         """
-        Search for lyceum articles that match the given query.
+        Search for tags that match the given query (Non-PaginatedList version).
 
-        For a list of supported filter/condition properties, see :py:class:`.LyceumArticle`.
+        For a list of supported filter/condition properties, see :py:class:`.Tag`.
 
-        :api: /api/v1/lyceum_article/list
+        :api: /api/v1/tag/list
         :param page_number: Number of the list page, for pagination.
         :param page_length: Length of the list page, for pagination (max. 250).
         :param desc: If True, returns items in descending order. Requires sort key to be set.
@@ -3056,13 +3497,13 @@ class BotB:
                         as the value. Note that filters are deprecated; conditions
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
-        :returns: List of LyceumArticle objects representing the search results. If the
+        :returns: List of Tag objects representing the search results. If the
                   search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         :raises ValueError: If a provided parameter is incorrect.
         """
         ret = self._list(
-            "lyceum_article",
+            "tag",
             page_number=page_number,
             page_length=page_length,
             desc=desc,
@@ -3073,47 +3514,178 @@ class BotB:
 
         out = []
         for payload in ret:
-            out.append(LyceumArticle.from_payload(payload))
+            out.append(Tag.from_payload(payload))
 
         return out
 
-    def lyceum_article_random(self) -> LyceumArticle:
+    def tag_list(
+        self,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[Tag]:
         """
-        Get a random lyceum article.
+        Search for tags that match the given query (Non-PaginatedList version).
 
-        :api: /api/v1/lyceum_article/random
-        :returns: LyceumArticle object representing the lyceum article.
+        For a list of supported filter/condition properties, see :py:class:`.Tag`.
+
+        :api: /api/v1/tag/list
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: PaginatedList of Tag objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        return PaginatedList(
+            self._tag_list_noiter,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+            max_items=max_items,
+        )
+
+    def tag_random(self) -> Tag:
+        """
+        Get a random tag.
+
+        :api: /api/v1/tag/random
+        :returns: Tag object representing the user.
         :raises ConnectionError: On connection error.
         """
-        ret = self._random("lyceum_article")
+        ret = self._random("tag")
 
-        return LyceumArticle.from_payload(ret)
+        return Tag.from_payload(ret)
 
-    def lyceum_article_search(
+    def _tag_search_noiter(
         self, query: str, page_number: int = 0, page_length: int = 25
-    ) -> List[LyceumArticle]:
+    ) -> List[Tag]:
         """
-        Search for lyceum articles that match the given query.
+        Search for tags that match the given query.
 
-        :api: /api/v1/lyceum_article/search
+        :api: /api/v1/tag/search
         :param query: Search query for the search.
-        :returns: List of LyceumArticle objects representing the search results. If the
-            search returned no results, the list will be empty.
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :returns: PaginatedList of Tag objects representing the search results. If the
+            search returned no results, the resulting iterable will return no results.
         :raises ConnectionError: On connection error.
         """
         ret = self._search(
-            "lyceum_article", query, page_number=page_number, page_length=page_length
+            "tag", query, page_number=page_number, page_length=page_length
         )
 
         out = []
         for payload in ret:
-            out.append(LyceumArticle.from_payload(payload))
+            out.append(Tag.from_payload(payload))
 
         return out
+
+    def tag_search(self, query: str, max_items: int = 0) -> Iterable[Tag]:
+        """
+        Search for tags that match the given query.
+
+        :api: /api/v1/tag/search
+        :param query: Search query for the search.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: List of Tag objects representing the search results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        return PaginatedList(self._tag_search_noiter, query=query, max_items=max_items)
 
     #
     # BotBr stats
     #
+
+    def _botbr_stats_list_noiter(
+        self,
+        page_number: int = 0,
+        page_length: int = 25,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[BotBrStats]:
+        """
+        Search for BotBr stats that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.BotBrStats`.
+
+        :api: /api/v1/botbr_stats/list
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of BotBrStats objects representing the search results. If the
+                  search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        ret = self._list(
+            "botbr_stats",
+            page_number=page_number,
+            page_length=page_length,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+        )
+
+        out = []
+        for payload in ret:
+            out.append(BotBrStats.from_payload(payload))
+
+        return out
+
+    def botbr_stats_list(
+        self,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[BotBrStats]:
+        """
+        Search for BotBr stats that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.BotBrStats`.
+
+        :api: /api/v1/botbr_stats/list
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: PaginatedList of BotBrStats objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        return PaginatedList(
+            self._botbr_stats_list_noiter,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+            max_items=max_items,
+        )
 
     def botbr_stats_by_botbr_id(self, botbr_id: int) -> List[BotBrStats]:
         """
@@ -3175,7 +3747,7 @@ class BotB:
         Get a random BotBr stat.
 
         :api: /api/v1/botbr_stats/random
-        :returns: BotBrStats object representing the BotBr stat.
+        :returns: BotBrStats object representing the user.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("botbr_stats")
@@ -3188,10 +3760,10 @@ class BotB:
 
     def daily_stats_load(self, daily_stats_id: int) -> Union[DailyStats, None]:
         """
-        Load a daily stat's info by its ID.
+        Load a daily stat's info by their ID.
 
         :api: /api/v1/daily_stats/load
-        :param daily_stats_id: ID of the daily stat to load.
+        :param daily_stats_id: ID of the daily_stats to load.
         :returns: DailyStats object representing the user, or None if the user is not
             found.
         :raises ConnectionError: On connection error.
@@ -3202,7 +3774,7 @@ class BotB:
 
         return DailyStats.from_payload(ret)
 
-    def daily_stats_list(
+    def _daily_stats_list_noiter(
         self,
         page_number: int = 0,
         page_length: int = 25,
@@ -3212,7 +3784,7 @@ class BotB:
         conditions: Optional[List[Condition]] = None,
     ) -> List[DailyStats]:
         """
-        Search for daily stats that match the given query.
+        Search for daily stats that match the given query (Non-PaginatedList version).
 
         For a list of supported filter/condition properties, see :py:class:`.DailyStats`.
 
@@ -3246,12 +3818,48 @@ class BotB:
 
         return out
 
+    def daily_stats_list(
+        self,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[DailyStats]:
+        """
+        Search for daily stats that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.DailyStats`.
+
+        :api: /api/v1/daily_stats/list
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: PaginatedList of DailyStats objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        return PaginatedList(
+            self._daily_stats_list_noiter,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+            max_items=max_items,
+        )
+
     def daily_stats_random(self) -> DailyStats:
         """
         Get a random daily stat.
 
         :api: /api/v1/daily_stats/random
-        :returns: DailyStats object representing the daily stat.
+        :returns: DailyStats object representing the user.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("daily_stats")
