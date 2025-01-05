@@ -200,7 +200,7 @@ Most HTTP request libraries, upon being passed a dictionary-like object, will at
 
 ---
 
-### Random
+### Random `/api/v1/{object_type}/random`
 
 > `GET` `/api/v1/{object_type}/random`
 >
@@ -218,7 +218,7 @@ Most HTTP request libraries, upon being passed a dictionary-like object, will at
 
 ---
 
-### Search
+### Search `/api/v1/{object_type}/search/{query}`
 
 > `GET` `/api/v1/{object_type}/search/{query}[/{page_number}[/{page_length}]]`
 >
