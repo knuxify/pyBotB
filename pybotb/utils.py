@@ -8,11 +8,6 @@ import requests
 from requests.adapters import HTTPAdapter, Retry
 from typing import Any, Callable, Optional, Union, cast
 import sys
-
-if sys.version_info >= (3, 12):
-    from typing import GenericAlias  # type: ignore
-else:
-    from typing_extensions import GenericAlias  # type: ignore
 import time
 
 
@@ -251,9 +246,6 @@ class cached_property_dep:
             self._attr_cached = val
 
         return val
-
-    # Copied from cached_property, TODO is this needed?
-    __class_getitem__ = classmethod(GenericAlias)  # type: ignore
 
 
 def param_stringify(to_stringify: Union[int, str, bool]):
