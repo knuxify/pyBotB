@@ -7,7 +7,7 @@ name = "pybotb"
 version = "0.0.1"
 dependencies = [
 	"BeautifulSoup4",
-	"decorators",
+	"decorator",
 	"lxml",
 	"pytz",
 	"requests",
