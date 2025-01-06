@@ -10,6 +10,8 @@ from typing import (
     List,
     Optional,
 )
+import sys
+
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
