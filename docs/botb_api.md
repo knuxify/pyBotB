@@ -47,7 +47,7 @@ Available object types are:
 * `botbr_stats` - a single statistic for a BotBr.
 * `daily_stats` - the site-wide statistic for a specific day.
 
-For an overview of properties for each object type, see pyBotB's implementation: [Data Classes](/usage/data_classes.html).
+For an overview of properties for each object type, see pyBotB's implementation: [Data classes](/usage/data_classes.html).
 
 ## Basic commands
 
