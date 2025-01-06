@@ -7,7 +7,6 @@ from enum import Enum, IntEnum
 import requests
 from requests.adapters import HTTPAdapter, Retry
 from typing import Any, Callable, Optional, Union, cast
-import sys
 import time
 
 
