@@ -34,7 +34,7 @@ from .types import (
 from .utils import Session, param_stringify
 
 
-@dataclass(slots=True)
+@dataclass
 class Condition:
     """Represents a condition passed to a "list" API query."""
 
