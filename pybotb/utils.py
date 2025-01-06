@@ -99,7 +99,7 @@ def payload_cast(in_value: Any, out_type: type) -> Any:
         is_dataclass_with_payload = hasattr(out_type, "from_payload")
 
     try:
-        is_typing_list = out_type.__origin__ is list
+        is_typing_list = out_type.__origin__ is list  # type: ignore
     except AttributeError:
         is_typing_list = False
 
@@ -107,12 +107,12 @@ def payload_cast(in_value: Any, out_type: type) -> Any:
     if is_typing_list:
         out = []
         for i in in_value:
-            out.append(payload_cast(i, out_type.__args__[0]))
+            out.append(payload_cast(i, out_type.__args__[0]))  # type: ignore
         return out
 
     # Data class with from_payload method
     elif is_dataclass_with_payload:
-        return out_type.from_payload(in_value)
+        return out_type.from_payload(in_value)  # type: ignore
 
     # Int, Float, String as well as non-IntEnum Enum types
     elif out_type in (int, float, str) or (is_enum and not is_intenum):
@@ -195,7 +195,7 @@ class cached_property_dep:
     property when an attribute with the given name changes.
     """
 
-    def __init__(self, func: Callable, attr: str = ""):
+    def __init__(self, func: Optional[Callable] = None, attr: str = ""):
         self.func = func
         self.__doc__ = func.__doc__
         self.__module__ = func.__module__

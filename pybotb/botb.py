@@ -587,7 +587,7 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
-    ) -> PaginatedList:
+    ) -> Iterable[Palette]:
         """
         List all palettes created by the BotBr with the given ID.
 
