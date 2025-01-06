@@ -696,9 +696,6 @@ class Entry:
     #: Amount of comments ("posts") under this entry.
     posts: int
 
-    #: URL to the entry's page on the site.
-    profile_url: str
-
     #: ???
     q: int
 
@@ -713,9 +710,13 @@ class Entry:
     votes: int
 
     #: URL to the player for the entry.
+    #:
+    #: Empty for deleted entries.
     view_url: str
 
     #: Preview URL.
+    #:
+    #: Empty for deleted entries.
     preview_url: str
 
     #: Length of the entry, in seconds.
@@ -723,10 +724,16 @@ class Entry:
     #: Only present for audio entries.
     length: float = 0
 
+    #: URL to the entry's page on the site.
+    #:
+    #: Not present (None) for entries that have been removed from the site.
+    profile_url: Optional[str] = None
+
     #: Relative player URL for the entry ("/player/Entry/{id}" format).
     #:
     #: Present for audio and visual entries, except for some non-audio entries
-    #: with archives or other filetypes. Also not present for non-rendered entries.
+    #: with archives or other filetypes. Also not present for non-rendered entries,
+    #: and not present for entries that have been removed from the site.
     listen_url: Optional[str] = None
 
     #: Direct URL to the source file of an audio entry.
