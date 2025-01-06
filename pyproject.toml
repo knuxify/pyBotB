@@ -39,7 +39,7 @@ Homepage = "https://github.com/knuxify/pybotb"
 Issues = "https://github.com/knuxify/pybotb/issues"
 
 [tool.ruff]
-extend-exclude = ["pb/models/migrations"]
+extend-exclude = ["docs"]
 force-exclude = true
 
 [tool.ruff.lint]
@@ -55,7 +55,7 @@ pre-summary-newline = true
 
 [tool.poe.tasks]
 test = "python3 -m pytest"
-lint = "ruff check pybotb"
+lint = "ruff check ."
 build-docs = "sphinx-build -M html docs/ docs/_build/"
 serve-docs = "sh -c \"PYTHONPATH=. sphinx-autobuild docs/ docs/_build/\""
 check-api-coverage = "sh -c \"PYTHONPATH=. python3 tools/check_api_coverage.py\""
@@ -63,10 +63,8 @@ check-dataclass-compat = "sh -c \"PYTHONPATH=. python3 tools/check_dataclass_com
 
 [tool.poe.tasks.format]
 shell = """
-for proj in pybotb tests; do
-	ruff format $proj
-	docformatter $proj -ir || true
-	ruff check --fix --quiet $proj
-done
+ruff format .
+docformatter pybotb -ir || true
+ruff check --fix --quiet .
 """
 interpreter = "posix"
