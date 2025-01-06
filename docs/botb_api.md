@@ -40,6 +40,7 @@ Available object types are:
 * `format` - a battle format.
 * `group_thread` - a thread of messages; forum threads and comments on entries/battles/BotBr profiles are group threads.
 * `lyceum_article` - an article on the Lyceum.
+* `palette` - an on-site color palette.
 * `playlist` - a single playlist containing entries.
   * `playlist_to_entry` - join table joining playlist and entry.
 * `tag` - a single tag given to an entry.
@@ -48,8 +49,27 @@ Available object types are:
 
 For an overview of properties for each object type, see pyBotB's implementation: [Data Classes](/usage/data_classes.html).
 
-## Commands
+## Basic commands
 
+All object commands have at least 3 of the 4 basic commands: `load`, `list`, `random` and `search`. The following is a table of available basic commands per object type:
+
+| Object type			| Load | List | Random | Search |
+|-----------------------|------|------|--------|--------|
+| `battle`				| ✔    | ✔    | ✔      | ✔      |
+| `botbr`				| ✔    | ✔    | ✔      | ✔      |
+| `entry`				| ✔    | ✔    | ✔      | ✔      |
+| `favorite`			| ✔    | ✔    | ✔      | ✘      |
+| `format`				| ✔    | ✔    | ✔      | ✘      |
+| `group_thread`		| ✔    | ✔    | ✔      | ✔      |
+| `lyceum_article`		| ✔    | ✔    | ✔      | ✔      |
+| `palette`				| ✔    | ✔    | ✔      | ✘      |
+| `playlist`			| ✔    | ✔    | ✔      | ✔      |
+| `playlist_to_entry`	| ✔*   | ✔    | ✔      | ✔      |
+| `tag`					| ✔    | ✔    | ✔      | ✔      |
+| `botbr_stats`			| ✔*   | ✔    | ✔      | ✘      |
+| `daily_stats`			| ✔    | ✔    | ✔      | ✘      |
+
+\* does not have an user-exposed ID, thus the load option is not very useful
 
 ### Load (`/api/v1/{object_type}/load/{id}`)
 
