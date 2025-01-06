@@ -31,7 +31,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 docs = ["sphinx", "sphinx-autodoc-typehints", "enum-tools[sphinx]", "furo", "myst-parser", "sphinx-multiversion"]
 format = ["ruff"]
 test = ["pytest"]
