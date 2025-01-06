@@ -110,6 +110,10 @@ def test_botb_api_entry(botb):
     ret = botb.entry_load(73426)
     assert ret
     assert ret.id == 73426
+    assert type(ret.botbr) is pybotb.botb.BotBr
+    assert type(ret.format) is pybotb.botb.Format
+    for a in ret.authors:
+        assert type(a) is pybotb.botb.EntryAuthor
 
     # Load 404
     ret = botb.entry_load(12345678987654321)

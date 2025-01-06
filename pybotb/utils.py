@@ -80,6 +80,67 @@ class Session(requests.Session):
         headers.update({"User-Agent": user_agent})
 
 
+def payload_cast(in_value: Any, out_type: type) -> Any:
+    """
+    Perform a type cast from the input value to the target type.
+
+    :param in_value: Value to convert.
+    :param out_type: Desired output type.
+    """
+    # Some types can be converted manually; others should be converted
+    # by the function callers before calling.
+    try:
+        is_intenum = issubclass(out_type, IntEnum)
+    except TypeError:
+        is_intenum = False
+
+    try:
+        is_enum = issubclass(out_type, Enum)
+    except TypeError:
+        is_enum = False
+
+    is_dataclass_with_payload = dataclasses.is_dataclass(out_type)
+    if is_dataclass_with_payload:
+        is_dataclass_with_payload = hasattr(out_type, "from_payload")
+
+    try:
+        is_typing_list = out_type.__origin__ is list
+    except AttributeError:
+        is_typing_list = False
+
+    # typing.List type with inner object type defined; cast recursively
+    if is_typing_list:
+        out = []
+        for i in in_value:
+            out.append(payload_cast(i, out_type.__args__[0]))
+        return out
+
+    # Data class with from_payload method
+    elif is_dataclass_with_payload:
+        return out_type.from_payload(in_value)
+
+    # Int, Float, String as well as non-IntEnum Enum types
+    elif out_type in (int, float, str) or (is_enum and not is_intenum):
+        return out_type(in_value)
+
+    # IntEnum (same as above, but convert value to int first)
+    elif is_intenum:
+        return out_type(int(in_value))
+
+    # Boolean
+    elif out_type is bool:
+        val = in_value
+        if type(val) is bool:
+            return val
+        elif type(val) is str:
+            return False if val.lower() == "false" else True
+        else:
+            return bool(val)
+
+    # Unknown type, return as-is
+    return in_value
+
+
 def unroll_payload(
     cls: type, payload: dict, payload_to_attr: Optional[dict] = None
 ) -> Any:
@@ -110,35 +171,10 @@ def unroll_payload(
 
         class_attr_type = attr_types[class_attr]
 
-        # Some types can be converted manually; others should be converted
-        # by the function callers before calling.
         try:
-            is_intenum = issubclass(class_attr_type, IntEnum)
-        except TypeError:
-            is_intenum = False
-
-        try:
-            is_enum = issubclass(class_attr_type, Enum)
-        except TypeError:
-            is_enum = False
-
-        try:
-            if class_attr_type in (int, float, str) or (is_enum and not is_intenum):
-                payload_parsed[class_attr] = class_attr_type(payload[payload_attr])
-            elif is_intenum:
-                payload_parsed[class_attr] = class_attr_type(int(payload[payload_attr]))
-            elif class_attr_type is bool:
-                val = payload[payload_attr]
-                if type(val) is bool:
-                    payload_parsed[class_attr] = val
-                elif type(val) is str:
-                    payload_parsed[class_attr] = (
-                        False if val.lower() == "false" else True
-                    )
-                else:
-                    payload_parsed[class_attr] = bool(val)
-            else:
-                payload_parsed[class_attr] = payload[payload_attr]
+            payload_parsed[class_attr] = payload_cast(
+                payload[payload_attr], class_attr_type
+            )
         except Exception as e:
             raise ValueError(
                 f"Failed to convert value of {class_attr} (object ID: {payload.get('id', None)}). This is a pyBotB bug!",

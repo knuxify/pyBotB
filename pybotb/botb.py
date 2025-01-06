@@ -309,12 +309,12 @@ class Format:
     _raw_payload: Optional[dict] = field(default=None, repr=False)
 
     @classmethod
-    def from_payload(cls, payload: dict):
+    def from_payload(cls, payload: dict) -> Self:
         """
-        Convert a JSON payload (provided as a dict) into a BotBr object.
+        Convert a JSON payload (provided as a dict) into a Format object.
 
         :param payload: Dictionary containing the JSON payload.
-        :returns: The resulting BotBr object.
+        :returns: The resulting Format object.
         """
         payload_parsed = payload.copy()
 
@@ -469,7 +469,11 @@ class Battle:
 
     #: Current battle period. "warmup" for upcoming battles, "entry" for
     #: entry period, "vote" for voting period, "end" for end period.
-    period: BattlePeriod
+    #:
+    #: Some endpoints (e.g. Battle objects in :attr:`.Entry.battle`) do not
+    #: return this value; in this case, use :method:`.BotBr.battle_load` to
+    #: get the full battle info.
+    period: Optional[BattlePeriod] = None
 
     #: String representing the date and time at which the battle ends, in
     #: YYYY-MM-DD HH:MM:SS format, in the US East Coast timezone (same as all
@@ -480,10 +484,10 @@ class Battle:
     #:
     #: The end date is also converted to a datetime for developer convenience;
     #: see :attr:`.end`.
-    period_end_str: str = field()
+    period_end_str: Optional[str] = field(default=None)
 
     @cached_property_dep("period_end_str")
-    def period_end(self) -> datetime:
+    def period_end(self) -> Optional[datetime]:
         """
         Date and time at which the current battle period ends.
 
@@ -492,6 +496,9 @@ class Battle:
 
         For the raw string, see :attr:`.period_end_str`.
         """
+        if self.period_end_str is None:
+            return None
+
         return datetime.strptime(self.period_end_str, "%Y-%m-%d %H:%M:%S").replace(
             tzinfo=pytz.timezone("America/Los_Angeles")
         )
@@ -508,10 +515,10 @@ class Battle:
     @classmethod
     def from_payload(cls, payload: dict) -> Self:
         """
-        Convert a JSON payload (provided as a dict) into a BotBr object.
+        Convert a JSON payload (provided as a dict) into a Battle object.
 
         :param payload: Dictionary containing the JSON payload.
-        :returns: The resulting BotBr object.
+        :returns: The resulting Battle object.
         """
         payload_parsed = payload.copy()
 
@@ -608,10 +615,10 @@ class EntryAuthor:
     @classmethod
     def from_payload(cls, payload: dict) -> Self:
         """
-        Convert a JSON payload (provided as a dict) into a BotBr object.
+        Convert a JSON payload (provided as a dict) into an EntryAuthor object.
 
         :param payload: Dictionary containing the JSON payload.
-        :returns: The resulting BotBr object.
+        :returns: The resulting EntryAuthor object.
         """
         ret = unroll_payload(
             cls,
@@ -636,7 +643,7 @@ class Entry:
     """Represents a battle entry."""
 
     #: List of authors for the entry.
-    authors: List[BotBr]
+    authors: List[EntryAuthor]
 
     #: A string containing the names of all authors joined with a " + " symbol.
     authors_display: str
@@ -847,7 +854,7 @@ class Entry:
         return ret
 
     def __repr__(self):
-        return f'<Entry: "{self.title}" by {self.authors_display} (Format {self.format_token}, Battle {self.battle.name}, ID {self.id})>'
+        return f'<Entry: "{self.title}" by {self.authors_display} (Format {self.format_token}, Battle {self.battle.title}, ID {self.id})>'
 
     def __str__(self):
         return self.__repr__()
@@ -1165,10 +1172,10 @@ class Palette:
     @classmethod
     def from_payload(cls, payload: dict) -> Self:
         """
-        Convert a JSON payload (provided as a dict) into a Favorite object.
+        Convert a JSON payload (provided as a dict) into a Palette object.
 
         :param payload: Dictionary containing the JSON payload.
-        :returns: The resulting Favorite object.
+        :returns: The resulting Palette object.
         """
         ret = unroll_payload(cls, payload)
         ret._raw_payload = payload.copy()
@@ -1261,10 +1268,10 @@ class Playlist:
     @classmethod
     def from_payload(cls, payload: dict) -> Self:
         """
-        Convert a JSON payload (provided as a dict) into a Favorite object.
+        Convert a JSON payload (provided as a dict) into a Playlist object.
 
         :param payload: Dictionary containing the JSON payload.
-        :returns: The resulting Favorite object.
+        :returns: The resulting Playlist object.
         """
         ret = unroll_payload(
             cls,
@@ -1405,10 +1412,10 @@ class DailyStats:
     @classmethod
     def from_payload(cls, payload: dict) -> Self:
         """
-        Convert a JSON payload (provided as a dict) into a Favorite object.
+        Convert a JSON payload (provided as a dict) into a DailyStats object.
 
         :param payload: Dictionary containing the JSON payload.
-        :returns: The resulting Favorite object.
+        :returns: The resulting DailyStats object.
         """
         ret = unroll_payload(
             cls,
@@ -1422,7 +1429,7 @@ class DailyStats:
         return ret
 
     def __repr__(self):
-        return f"<BotBrStats: {self.label} = {self.val} for BotBr {self.botbr_id} on {self.date_str}>"
+        return f"<DailyStats for {self.date_str} (ID {self.id})>"
 
     def __str__(self):
         return self.__repr__()
@@ -1477,10 +1484,10 @@ class BotBrStats:
     @classmethod
     def from_payload(cls, payload: dict) -> Self:
         """
-        Convert a JSON payload (provided as a dict) into a Favorite object.
+        Convert a JSON payload (provided as a dict) into a BotBrStats object.
 
         :param payload: Dictionary containing the JSON payload.
-        :returns: The resulting Favorite object.
+        :returns: The resulting BotBrStats object.
         """
         ret = unroll_payload(
             cls,
