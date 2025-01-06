@@ -25,6 +25,7 @@ extensions = [
     "enum_tools.autoenum",
     "sphinx.ext.intersphinx",
     "myst_parser",
+    "sphinx_multiversion",
 ]
 
 templates_path = ["_templates"]

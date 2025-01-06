@@ -32,7 +32,7 @@ classifiers = [
 ]
 
 [dependency-groups]
-docs = ["sphinx", "sphinx-autodoc-typehints", "enum-tools[sphinx]", "furo", "myst-parser"]
+docs = ["sphinx", "sphinx-autodoc-typehints", "enum-tools[sphinx]", "furo", "myst-parser", "sphinx-multiversion"]
 format = ["ruff"]
 test = ["pytest"]
 
