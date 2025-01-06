@@ -96,7 +96,7 @@ class BotBr:
     #: see :attr:`.BotBr.create_date`.
     create_date_str: str
 
-    @cached_property_dep("create_date_str")
+    @cached_property_dep(attr="create_date_str")
     def create_date(self) -> datetime:
         """
         Account creation date as a datetime object.
@@ -119,7 +119,7 @@ class BotBr:
     #: see :attr:`.BotBr.laston_date`.
     laston_date_str: str
 
-    @cached_property_dep("laston_date_str")
+    @cached_property_dep(attr="laston_date_str")
     def laston_date(self) -> datetime:
         """
         Last seen date as a datetime object.
@@ -377,7 +377,7 @@ class Battle:
     #: see :attr:`.start`.
     start_str: str
 
-    @cached_property_dep("start_str")
+    @cached_property_dep(attr="start_str")
     def start(self) -> datetime:
         """
         Last seen date as a datetime object.
@@ -399,7 +399,7 @@ class Battle:
     #: see :attr:`.Battle.end`.
     end_str: str = field()
 
-    @cached_property_dep("end_str")
+    @cached_property_dep(attr="end_str")
     def end(self) -> datetime:
         """
         Date and time at which the battle ends.
@@ -436,7 +436,7 @@ class Battle:
     #: see :attr:`.end`.
     period_end_str: Optional[str] = field(default=None)
 
-    @cached_property_dep("period_end_str")
+    @cached_property_dep(attr="period_end_str")
     def period_end(self) -> Optional[datetime]:
         """
         Date and time at which the current battle period ends.
@@ -618,7 +618,7 @@ class Entry:
     #: see :attr:`.Entry.datetime`.
     datetime_str: str = field()
 
-    @cached_property_dep("datetime_str")
+    @cached_property_dep(attr="datetime_str")
     def datetime(self) -> datetime:
         """
         Account creation date as a datetime object.
@@ -922,7 +922,7 @@ class GroupThread:
     #: in the US East Coast timezone (same as all other dates on the site).
     first_post_timestamp_str: str
 
-    @cached_property_dep("first_post_timestamp_str")
+    @cached_property_dep(attr="first_post_timestamp_str")
     def first_post_timestamp(self) -> datetime:
         """
         First post's timestamp as a datetime object.
@@ -939,7 +939,7 @@ class GroupThread:
     #: None if the thread only contains one post.
     last_post_timestamp_str: Optional[str] = None
 
-    @cached_property_dep("last_post_timestamp_str")
+    @cached_property_dep(attr="last_post_timestamp_str")
     def last_post_timestamp(self) -> Optional[datetime]:
         """
         Last post's timestamp as a datetime object.
@@ -1167,7 +1167,7 @@ class Playlist:
     #: see :attr:`.date_create`.
     date_create_str: str
 
-    @cached_property_dep("date_create_str")
+    @cached_property_dep(attr="date_create_str")
     def date_create(self) -> datetime:
         """
         Last seen date as a datetime object.
@@ -1187,7 +1187,7 @@ class Playlist:
     #: see :attr:`.date_modify`.
     date_modify_str: str = field()
 
-    @cached_property_dep("date_modify_str")
+    @cached_property_dep(attr="date_modify_str")
     def date_modify(self) -> datetime:
         """
         Last seen date as a datetime object.
@@ -1293,7 +1293,7 @@ class DailyStats:
     #: see :attr:`.date`.
     date_str: str
 
-    @cached_property_dep("date_str")
+    @cached_property_dep(attr="date_str")
     def date(self) -> datetime:
         """
         Statistic date as a datetime object.
@@ -1415,7 +1415,7 @@ class BotBrStats:
     #: see :attr:`.date`.
     date_str: str
 
-    @cached_property_dep("date_str")
+    @cached_property_dep(attr="date_str")
     def date(self) -> datetime:
         """
         Statistic date as a datetime object.
