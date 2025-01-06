@@ -20,7 +20,7 @@ maintainers = [
 ]
 description = "Python library for interacting with both the Battle of the Bits API and the site itself"
 readme = "README.md"
-license = {file = "LICENSE.txt"}
+license = {file = "COPYING"}
 keywords = ["botb", "battleofthebits", "Battle of the Bits", "api"]
 requires-python = ">=3.9"
 classifiers = [
