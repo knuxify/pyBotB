@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --editable . .[docs]
+          pip install --editable .[docs]
       - name: Build with sphinx-multiversion
         run: |
           sphinx-multiversion docs docs/_build
