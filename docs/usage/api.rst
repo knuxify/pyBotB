@@ -12,3 +12,16 @@ pyBotB API
    :members:
    :undoc-members:
    :show-inheritance:
+
+Helper classes
+==============
+
+.. autoclass:: pybotb.botb.Condition
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: pybotb.botb.PaginatedList
+   :members:
+   :undoc-members:
+   :show-inheritance:

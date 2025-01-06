@@ -5,6 +5,7 @@ import pytest
 
 import pybotb.botb
 from pybotb.botb import Condition
+import pybotb.types
 
 
 @pytest.fixture
@@ -28,7 +29,7 @@ def test_botb_api_botbr(botb):
     # Random
     ret = botb.botbr_random()
     assert ret
-    assert type(ret) is pybotb.botb.BotBr
+    assert type(ret) is pybotb.types.BotBr
 
     # Search
     ret = [b for b in botb.botbr_search("puke7")]
@@ -92,7 +93,7 @@ def test_botb_api_battle(botb):
     # Random
     ret = botb.battle_random()
     assert ret
-    assert type(ret) is pybotb.botb.Battle
+    assert type(ret) is pybotb.types.Battle
 
     # List
     ret = [b for b in botb.battle_list(sort="id", desc=True, max_items=50)]
@@ -101,7 +102,7 @@ def test_botb_api_battle(botb):
     # Current battles
     ret = botb.battle_current()
     for b in ret:
-        assert type(b) is pybotb.botb.Battle
+        assert type(b) is pybotb.types.Battle
 
 
 def test_botb_api_entry(botb):
@@ -110,10 +111,10 @@ def test_botb_api_entry(botb):
     ret = botb.entry_load(73426)
     assert ret
     assert ret.id == 73426
-    assert type(ret.botbr) is pybotb.botb.BotBr
-    assert type(ret.format) is pybotb.botb.Format
+    assert type(ret.botbr) is pybotb.types.BotBr
+    assert type(ret.format) is pybotb.types.Format
     for a in ret.authors:
-        assert type(a) is pybotb.botb.EntryAuthor
+        assert type(a) is pybotb.types.EntryAuthor
 
     # Load 404
     ret = botb.entry_load(12345678987654321)
@@ -122,7 +123,7 @@ def test_botb_api_entry(botb):
     # Random
     ret = botb.entry_random()
     assert ret
-    assert type(ret) is pybotb.botb.Entry
+    assert type(ret) is pybotb.types.Entry
 
     # List
     ret = [e for e in botb.entry_list(sort="id", desc=True, max_items=50)]
@@ -168,7 +169,7 @@ def test_botb_api_entry(botb):
     ret = botb.entry_get_playlists(66768)
     assert ret
     for e in ret:
-        assert type(e) is pybotb.botb.Playlist
+        assert type(e) is pybotb.types.Playlist
         assert e.id in ret_ids
 
     ret = botb.entry_get_favorites(73426)
@@ -196,7 +197,7 @@ def test_botb_api_favorite(botb):
     # Random
     ret = botb.favorite_random()
     assert ret
-    assert type(ret) is pybotb.botb.Favorite
+    assert type(ret) is pybotb.types.Favorite
 
     # List
     ret = [
@@ -224,19 +225,19 @@ def test_botb_api_group_thread(botb):
     # Random
     ret = botb.group_thread_random()
     assert ret
-    assert type(ret) is pybotb.botb.GroupThread
+    assert type(ret) is pybotb.types.GroupThread
 
     # List
     ret = [g for g in botb.group_thread_list(sort="id", desc=True, max_items=50)]
     assert ret
     for thread in ret:
-        assert type(thread) is pybotb.botb.GroupThread
+        assert type(thread) is pybotb.types.GroupThread
 
     # Search
     ret = botb.group_thread_search("api")
     assert ret
     for thread in ret:
-        assert type(thread) is pybotb.botb.GroupThread
+        assert type(thread) is pybotb.types.GroupThread
         assert "api" in thread.title.lower()
 
 
@@ -254,19 +255,19 @@ def test_botb_api_lyceum_article(botb):
     # Random
     ret = botb.lyceum_article_random()
     assert ret
-    assert type(ret) is pybotb.botb.LyceumArticle
+    assert type(ret) is pybotb.types.LyceumArticle
 
     # List
     ret = [a for a in botb.lyceum_article_list(sort="id", desc=True, max_items=50)]
     assert ret
     for article in ret:
-        assert type(article) is pybotb.botb.LyceumArticle
+        assert type(article) is pybotb.types.LyceumArticle
 
     # Search
     ret = botb.lyceum_article_search("api")
     assert ret
     for article in ret:
-        assert type(article) is pybotb.botb.LyceumArticle
+        assert type(article) is pybotb.types.LyceumArticle
         assert "api" in article.title.lower()
 
 
@@ -284,7 +285,7 @@ def test_botb_api_palette(botb):
     # Random
     ret = botb.palette_random()
     assert ret
-    assert type(ret) is pybotb.botb.Palette
+    assert type(ret) is pybotb.types.Palette
 
     # List
     ret = [
@@ -300,7 +301,7 @@ def test_botb_api_palette(botb):
     # Current default
     ret = botb.palette_current_default()
     assert ret
-    assert type(ret) is pybotb.botb.Palette
+    assert type(ret) is pybotb.types.Palette
 
 
 def test_botb_api_playlist(botb):
@@ -317,7 +318,7 @@ def test_botb_api_playlist(botb):
     # Random
     ret = botb.playlist_random()
     assert ret
-    assert type(ret) is pybotb.botb.Playlist
+    assert type(ret) is pybotb.types.Playlist
 
     # List
     ret = [p for p in botb.playlist_list(sort="id", desc=True)]
@@ -328,7 +329,7 @@ def test_botb_api_playlist(botb):
 
     ret = botb.playlist_get_entries(115)
     for e in ret:
-        assert type(e) is pybotb.botb.Entry
+        assert type(e) is pybotb.types.Entry
         assert e.id in ret_ids
 
 
@@ -346,7 +347,7 @@ def test_botb_api_tag(botb):
     # Random
     ret = botb.tag_random()
     assert ret
-    assert type(ret) is pybotb.botb.Tag
+    assert type(ret) is pybotb.types.Tag
 
     # List
     ret = [
@@ -374,13 +375,13 @@ def test_botb_api_daily_stats(botb):
     # Random
     ret = botb.daily_stats_random()
     assert ret
-    assert type(ret) is pybotb.botb.DailyStats
+    assert type(ret) is pybotb.types.DailyStats
 
     # List
     ret = [d for d in botb.daily_stats_list(sort="id", desc=True, max_items=50)]
     assert ret
     for stat in ret:
-        assert type(stat) is pybotb.botb.DailyStats
+        assert type(stat) is pybotb.types.DailyStats
 
 
 def test_botb_api_botbr_stats(botb):
@@ -389,14 +390,14 @@ def test_botb_api_botbr_stats(botb):
     ret = botb.botbr_stats_by_botbr_id(16333)
     assert ret
     for stat in ret:
-        assert type(stat) is pybotb.botb.BotBrStats
+        assert type(stat) is pybotb.types.BotBrStats
 
     ret = botb.botbr_stats_days_back(16333, 5)
     assert ret
     for stat in ret:
-        assert type(stat) is pybotb.botb.BotBrStats
+        assert type(stat) is pybotb.types.BotBrStats
 
     # Random
     ret = botb.botbr_stats_random()
     assert ret
-    assert type(ret) is pybotb.botb.BotBrStats
+    assert type(ret) is pybotb.types.BotBrStats

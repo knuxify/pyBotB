@@ -5,9 +5,7 @@ For convenience, pyBotB provides some data classes that abstract away the
 basic data structures of BotB. These classes are returned by the BotB API
 functions.
 
-.. currentmodule:: pybotb.botb
+.. currentmodule:: pybotb.types
 
-.. automodule:: pybotb.botb
+.. automodule:: pybotb.types
    :members:
-   :exclude-members: BotB, BotBHacks
-
