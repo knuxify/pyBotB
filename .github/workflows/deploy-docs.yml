@@ -25,10 +25,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --editable .[docs]
+          pip install . .[docs]
       - name: Build with sphinx-multiversion
         run: |
           sphinx-multiversion docs docs/_build
+          cp docs/_static/index.html docs/_build/index.html
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
