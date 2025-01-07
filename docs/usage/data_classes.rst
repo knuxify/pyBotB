@@ -1,4 +1,4 @@
-Data Classes
+Data classes
 =============================
 
 For convenience, pyBotB provides some data classes that abstract away the

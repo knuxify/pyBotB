@@ -6,6 +6,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../'))
+from pybotb import VERSION
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -13,7 +14,7 @@ sys.path.insert(0, os.path.abspath('../'))
 project = "pyBotB"
 copyright = "2024, knuxify"
 author = "knuxify"
-release = "0.0.1"
+release = VERSION
 nitpicky = True
 
 # -- General configuration ---------------------------------------------------
@@ -29,6 +30,17 @@ extensions = [
 ]
 
 templates_path = ["_templates"]
+html_sidebars = {
+    "**": [
+        "sidebar/brand.html",
+        "sidebar/search.html",
+        "sidebar/scroll-start.html",
+        "sidebar/navigation.html",
+        "sidebar/versions.html",
+        "sidebar/scroll-end.html",
+    ],
+}
+
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # -- Options for HTML output -------------------------------------------------

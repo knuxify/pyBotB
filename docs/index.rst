@@ -6,7 +6,7 @@
 pyBotB documentation
 ====================
 
-toctree
+TODO
 
 .. toctree::
    :maxdepth: 2
