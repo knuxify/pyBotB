@@ -4,6 +4,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum
+from enum_tools.documentation import document_enum
 import pytz
 from typing import (
     Dict,
@@ -26,6 +27,7 @@ except ImportError:
 from .utils import unroll_payload, cached_property_dep
 
 
+@document_enum
 class BadgeLevel(IntEnum):
     """Enum for BotBr badge_levels values."""
 
@@ -209,6 +211,7 @@ class BotBr:
         return self.__repr__()
 
 
+@document_enum
 class Medium(StrEnum):
     """
     Enum for different medium types; not to be confused with formats.
@@ -292,6 +295,7 @@ class Format:
         return self.__repr__()
 
 
+@document_enum
 class BattlePeriod(StrEnum):
     """String enum containing battle period values."""
 
@@ -862,6 +866,7 @@ class Favorite:
         return self.__repr__()
 
 
+@document_enum
 class GroupID(IntEnum):
     """Forum group IDs."""
 
