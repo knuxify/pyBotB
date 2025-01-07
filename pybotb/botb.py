@@ -126,12 +126,6 @@ class BotB:
     """
     BotB API class. Exposes access to the official BotB API, documented on the
     Lyceum (https://battleofthebits.com/lyceum/View/BotB+API+v1).
-
-    This class only exposes official API endpoints. pyBotB also provides "hack"
-    methods, i.e. methods based on parsed data from the site's frontend, to
-    make some data available that the API does not typically expose; for those
-    methods, see :py:class:`pybotb.botb.BotBHacks` (note that they may break
-    at any moment).
     """
 
     def __init__(self, app_name=str):
@@ -2399,16 +2393,3 @@ class BotB:
         ret = self._random("daily_stats")
 
         return DailyStats.from_payload(ret)
-
-
-class BotBHacks(BotB):
-    """
-    Subclass of BotB object providing "hack" methods, i.e. methods based on parsed data
-    from the site's frontend.
-
-    This makes some data available that the API does not typically expose. Note
-    that these functions can be unstable and may break at any point - use at your
-    own risk!
-    """
-
-    # TODO: BotBr badge progress (botbr_get_badge_progress)

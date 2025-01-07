@@ -78,7 +78,7 @@ class BotBr:
     #:
     #: This lists *unlocked badges*, and is not to be confused with *badge progress*
     #: (badge progress points are what unlocks badges). Badge progress is not exposed
-    #: through the official API and can only be fetched through the TODO hack method.
+    #: through the official API and can only be fetched through the TODO method.
     badge_levels: Dict[str, BadgeLevel]
 
     #: Amount of boons that the BotBr currently has.

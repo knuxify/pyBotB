@@ -8,11 +8,6 @@ pyBotB API
    :undoc-members:
    :show-inheritance:
 
-.. autoclass:: pybotb.botb.BotBHacks
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Helper classes
 ==============
 
