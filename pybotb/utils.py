@@ -2,8 +2,8 @@
 """Common utility functions used in pyBotB."""
 
 import dataclasses
-from decorator import decorator
 from enum import Enum, IntEnum
+from functools import cached_property
 import requests
 from requests.adapters import HTTPAdapter, Retry
 from typing import Any, Callable, Optional, Union, cast
@@ -188,18 +188,16 @@ _NOT_FOUND = object()
 _NOT_INITIALIZED = object()
 
 
-@decorator
-class cached_property_dep:
+class cached_property_dep(cached_property):
     """
     Decorator inspired by cached_property which automatically invalidates the
     property when an attribute with the given name changes.
+
+    Inheriting from cached_property is done here solely to allow tools to
+    interpret this as a cached property; we override its functions here.
     """
 
-    def __init__(self, func: Optional[Callable] = None, attr: str = ""):
-        self.func = func
-        self.__doc__ = func.__doc__
-        self.__module__ = func.__module__
-
+    def __init__(self, attr: str = ""):
         self.attrname = None
         self._attr_cached = _NOT_INITIALIZED
 
@@ -207,7 +205,10 @@ class cached_property_dep:
         self._dep_attr_cached = _NOT_INITIALIZED
 
     def __call__(self, func):  # noqa: D102
-        return self  # Return the instance as a callable descriptor
+        self.func = func
+        self.__doc__ = func.__doc__
+        self.__module__ = func.__module__
+        return self
 
     def __set_name__(self, owner, name):
         if self.attrname is None:
