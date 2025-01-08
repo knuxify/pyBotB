@@ -853,7 +853,7 @@ class BotB:
         List all battles that happened/were ongoing on this year-month-day date (EST
         timezone).
 
-        :api: /api/v1/battle/current
+        :api: /api/v1/battle/list_by_date
         :param date: Date to look for; either a string in "YYYY-MM-DD" format
             or a :class:`datetime.date` or :class:`datetime.datetime` object.
         :returns: List of Battle objects representing the battles. If there are no
@@ -898,7 +898,7 @@ class BotB:
         List all battles that happened/were ongoing on the specified month in the
         specified year (EST timezone).
 
-        :api: /api/v1/battle/current
+        :api: /api/v1/battle/list_by_month
         :param date: Date as a YYYY-MM string.
         :param year: Year to look for.
         :param month: Month to look for.
