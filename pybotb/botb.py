@@ -2512,3 +2512,51 @@ class BotB:
         ret = self._random("daily_stats")
 
         return DailyStats.from_payload(ret)
+
+    #
+    # Miscelaneous
+    #
+
+    def firki_interpret(self, firki: str) -> str:
+        """
+        Interpret a Firki markup string into HTML.
+
+        :api: /api/v1/firki/interpret
+        :param firki: Firki markup input string.
+        :returns: String containing HTML output.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._s.post(
+            "https://battleofthebits.com/api/v1/firki/interpret",
+            data={"firki_string": firki},
+        )
+        if ret.status_code == 500:
+            raise ConnectionError(ret.text)
+
+        try:
+            # HACK: Firki interpret API always ends the returned string with "</span>"
+            # (no matching starting bracket). It is removed here for ease-of-use.
+            return ret.json()[0][:-7]
+        except Exception as e:
+            raise ConnectionError(ret.text) from e
+
+    def spriteshit_version(self) -> str:
+        """
+        Return the current version of the BotB spritesheet (affectionately named the
+        spriteshit).
+
+        This version string can be used to fetch the spriteshit PNG from BotB's
+        assets (https://battleofthebits.com/styles/spriteshit/{version}.png).
+
+        :api: /api/v1/spriteshit/version
+        :returns: The API version.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._s.get("https://battleofthebits.com/api/v1/spriteshit/version")
+        if ret.status_code == 500:
+            raise ConnectionError(ret.text)
+
+        try:
+            return ret.json()["spriteshit_version"]
+        except Exception as e:
+            raise ConnectionError(ret.text) from e

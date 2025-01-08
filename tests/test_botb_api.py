@@ -420,3 +420,12 @@ def test_botb_api_botbr_stats(botb):
     ret = botb.botbr_stats_random()
     assert ret
     assert type(ret) is pybotb.types.BotBrStats
+
+
+def test_botb_api_misc(botb):
+    """Test miscelaneous API methods."""
+    # Firki interpret
+    assert botb.firki_interpret("firki '[b]test'[/b]") == "firki <b>test</b>"
+
+    # Spriteshit version
+    assert type(botb.spriteshit_version()) is str

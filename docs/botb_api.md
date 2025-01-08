@@ -538,7 +538,7 @@ you'll see in the wild.
 
 **Post form data:**
 
-- `firki_string` (str) - the string to convert.
+- `firki_string` (str) - the string to convert. (Note that this string always ends with `</span>` (although no opening span tag is provided); you may want to remove it.)
 
 * **On success:** (HTTP `200`) - JSON list with a single item, containing the interpreted text as a string.
 * **On failure:**
