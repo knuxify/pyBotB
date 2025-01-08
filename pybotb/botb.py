@@ -533,6 +533,46 @@ class BotB:
 
         return None
 
+    def botbr_get_entries(
+        self,
+        botbr_id: int,
+        submitted_only: bool = False,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+    ) -> Iterable[Entry]:
+        """
+        List all entries which the BotBr authored (i.e. both entries submitted by the BotBr
+        and entries where they were tagged as a collaborator).
+
+        For only entries submitted by the BotBr, set submitted_only to True.
+
+        :api: /api/v1/entry/botbr_favorites_playlist
+        :param botbr_id: ID of the BotBr to get favorites for.
+        :param submitted_only: If True, returns only entries submitted by this BotBr directly,
+            excluding collaborations.
+        :param desc: If True, returns items in descending order. Requires sort key to be
+            set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value as
+            the value. Note that filters are deprecated; conditions should be used
+            instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: `PaginatedList` of Entry objects representing the list results. If the
+            search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        _conditions = [Condition("id", "IN_SUBQUERY:botbr_entry_list", botbr_id)]
+        if submitted_only:
+            _conditions.append(Condition("botbr_id", "=", botbr_id))
+        if conditions:
+            _conditions = conditions | _conditions
+
+        return self.entry_list(desc=desc, sort=sort, filters=filters, conditions=_conditions, max_items=max_items)
+
     def botbr_get_favorite_entries(
         self,
         botbr_id: int,
@@ -540,11 +580,11 @@ class BotB:
         sort: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
-    ) -> List[Entry]:
+        max_items: int = 0,
+    ) -> Iterable[Entry]:
         """
         List all entries favorited by the BotBr with the given ID.
 
-        :api: /api/v1/entry/botbr_favorites_playlist
         :param botbr_id: ID of the BotBr to get favorites for.
         :param desc: If True, returns items in descending order. Requires sort key to be
             set.
@@ -553,26 +593,16 @@ class BotB:
             the value. Note that filters are deprecated; conditions should be used
             instead.
         :param conditions: List of Condition objects containing list conditions.
-        :returns: List of Favorite objects representing the search results. If the
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :returns: List of Entry objects representing the list results. If the
             search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
-        ret = self._s.get(
-            f"https://battleofthebits.com/api/v1/entry/botbr_favorites_playlist/{botbr_id}"
-        )
+        _conditions = [Condition("id", "IN_SUBQUERY:botbr_favorites", botbr_id)]
+        if conditions:
+            _conditions = conditions | _conditions
 
-        if ret.status_code != 200:
-            raise ConnectionError(f"{ret.status_code}: {ret.text}")
-
-        try:
-            entries = ret.json()
-        except Exception as e:
-            raise ConnectionError(ret.text) from e
-
-        out = []
-        for entry in entries:
-            out.append(Entry.from_payload(entry))
-        return out
+        return self.entry_list(desc=desc, sort=sort, filters=filters, conditions=_conditions, max_items=max_items)
 
     def botbr_get_palettes(
         self,

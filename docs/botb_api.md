@@ -158,8 +158,8 @@ Some API queries within the site's client-side JS also provide a "key" property 
 * `IN` - check if the value of the property is contained within the list provided in the operand. **The operand must be a list of values.**
 * `IN_SUBQUERY:{subquery}` - exact mechanics are not known yet. Known subqueries are:
   * On `/api/v1/entry/list`:
-    * `id`, `IN_SUBQUERY:botbr_entry_list`, `{botbr_id}` (prop, operator, operand) - returns entries which the BotBr participated in. Used on the Entries page of a BotBr's profile
-    * `id`, `IN_SUBQUERY:botbr_favorites`, `{botbr_id}` (prop, operator, operand) - returns the favorites of the BotBr with the given ID. Used on the Favorites page of a BotBr's profile 
+    * `id`, `IN_SUBQUERY:botbr_entry_list`, `{botbr_id}` (prop, operator, operand) - returns entries which the BotBr either submitted or was added as a colaborator on. Used on the Entries page of a BotBr's profile.
+    * `id`, `IN_SUBQUERY:botbr_favorites`, `{botbr_id}` (prop, operator, operand) - returns the favorite entries of the BotBr with the given ID. Used on the Favorites page of a BotBr's profile.
 * `IS`/`IS NOT` - can be used in combination with an operand of `NULL` or `NOT NULL` to check if a field is/is not NULL. All other operands are not allowed.
 
 ##### Sending list conditions
@@ -394,7 +394,9 @@ Some object types also implement additional commands. These are outlined in this
 > List all favorite entries of the BotBr with the given ID.
 
 ```{note}
-This is missing some of my favorites, TODO?
+This seems to be missing some favorites; to get an accurate list, do a query
+to `/api/v1/entry/list` with the following condition: ("id", "IN_SUBQUERY:botbr_favorites",
+(BotBr ID)) (property, operator, operand).
 ```
 
 **Parameters:**

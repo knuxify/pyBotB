@@ -67,12 +67,17 @@ def test_botb_api_botbr(botb):
     for b in ret:
         assert b.level > 10
 
+    # Get entries
+    ret = [b for b in botb.botbr_get_entries(16333, sort="id", max_items=50)]
+    assert ret[0].id == 70736
+
     # pyBotB convenience wrappers
     assert botb.botbr_get_id_for_username("uart") == 16333
     assert botb.botbr_load_for_username("uart") == botb.botbr_load(16333)
 
-    ret = botb.botbr_get_favorite_entries(16333)
-    assert ret
+    ret = botb.botbr_get_favorite_entries(16333, max_items=50)
+    for b in ret:
+        assert type(b) is pybotb.types.Entry
 
     ret = botb.botbr_get_palettes(16333)
     assert ret
