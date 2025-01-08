@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 """Tests for the official BotB API portion of pybotb."""
 
+from datetime import date as dt_date
 import pytest
 
 import pybotb.botb
@@ -101,6 +102,17 @@ def test_botb_api_battle(botb):
 
     # Current battles
     ret = botb.battle_current()
+    for b in ret:
+        assert type(b) is pybotb.types.Battle
+
+    # List by date
+    ret = botb.battle_list_by_date("2024-04-20")
+    for b in ret:
+        assert type(b) is pybotb.types.Battle
+
+    assert set([b1.id for b1 in ret]) == set([b2.id for b2 in botb.battle_list_by_date(dt_date(year=2024, month=4, day=20))])
+
+    ret = botb.battle_list_by_month("2024-04")
     for b in ret:
         assert type(b) is pybotb.types.Battle
 

@@ -3,6 +3,7 @@
 
 import dataclasses
 from dataclasses import dataclass
+from datetime import date as dt_date, datetime
 from typing import (
     Any,
     Callable,
@@ -790,6 +791,73 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         ret = self._s.get("https://battleofthebits.com/api/v1/battle/current")
+        if ret.status_code != 200:
+            raise ConnectionError(f"{ret.status_code}: {ret.text}")
+
+        try:
+            battles = ret.json()
+        except Exception as e:
+            raise ConnectionError(ret.text) from e
+
+        out = []
+        for b in battles:
+            out.append(Battle.from_payload(b))
+        return out
+
+    def battle_list_by_date(self, date: Union[str, dt_date, datetime]) -> List[Battle]:
+        """
+        List all battles that happened/were ongoing on this year-month-day date (EST timezone).
+
+        :api: /api/v1/battle/current
+        :param date: Date to look for; either a string in "YYYY-MM-DD" format
+            or a :class:`datetime.date` or :class:`datetime.datetime` object.
+        :returns: List of Battle objects representing the battles. If there are no
+            matching battles, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        _valueerror_message = "Param \"date\" must be a string in YYYY-MM-DD format or a datetime object"
+
+        # If the date is a string, convert it to a date object for validation.
+        if isinstance(date, str):
+            try:
+                date = datetime.strptime(date, "%Y-%m-%d")
+            except ValueError as e:
+                raise ValueError(_valueerror_message) from e
+
+        # This is NOT an elif - we override date strings with a date object just above.
+        if isinstance(date, datetime) or isinstance(date, dt_date):
+            date_str = date.strftime("%Y-%m-%d")
+        else:
+            raise ValueError(_valueerror_message)
+
+        ret = self._s.get(f"https://battleofthebits.com/api/v1/battle/list_by_date/{date_str}")
+        if ret.status_code != 200:
+            raise ConnectionError(f"{ret.status_code}: {ret.text}")
+
+        try:
+            battles = ret.json()
+        except Exception as e:
+            raise ConnectionError(ret.text) from e
+
+        out = []
+        for b in battles:
+            out.append(Battle.from_payload(b))
+        return out
+
+    def battle_list_by_month(self, date: str = "") -> List[Battle]:
+        """
+        List all battles that happened/were ongoing on the specified month in the specified year
+        (EST timezone).
+
+        :api: /api/v1/battle/current
+        :param date: Date as a YYYY-MM string.
+        :param year: Year to look for.
+        :param month: Month to look for.
+        :returns: List of Battle objects representing the battles. If there are no
+            matching battles, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._s.get(f"https://battleofthebits.com/api/v1/battle/list_by_month/{date}")
         if ret.status_code != 200:
             raise ConnectionError(f"{ret.status_code}: {ret.text}")
 
