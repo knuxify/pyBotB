@@ -6,7 +6,7 @@ from enum import Enum, IntEnum
 from functools import cached_property
 import requests
 from requests.adapters import HTTPAdapter, Retry
-from typing import Any, Callable, Optional, Union, cast
+from typing import Any, Optional, Union, cast
 import time
 
 
@@ -190,11 +190,11 @@ _NOT_INITIALIZED = object()
 
 class cached_property_dep(cached_property):
     """
-    Decorator inspired by cached_property which automatically invalidates the
-    property when an attribute with the given name changes.
+    Decorator inspired by cached_property which automatically invalidates the property
+    when an attribute with the given name changes.
 
-    Inheriting from cached_property is done here solely to allow tools to
-    interpret this as a cached property; we override its functions here.
+    Inheriting from cached_property is done here solely to allow tools to interpret this
+    as a cached property; we override its functions here.
     """
 
     def __init__(self, attr: str = ""):

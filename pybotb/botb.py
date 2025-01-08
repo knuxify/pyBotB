@@ -125,7 +125,9 @@ class PaginatedList:
 
 class BotB:
     """
-    BotB API class. Exposes access to the official BotB API, documented on the
+    BotB API class.
+
+    Exposes access to the official BotB API, documented on the
     Lyceum (https://battleofthebits.com/lyceum/View/BotB+API+v1).
     """
 
@@ -544,8 +546,8 @@ class BotB:
         max_items: int = 0,
     ) -> Iterable[Entry]:
         """
-        List all entries which the BotBr authored (i.e. both entries submitted by the BotBr
-        and entries where they were tagged as a collaborator).
+        List all entries which the BotBr authored (i.e. both entries submitted by the
+        BotBr and entries where they were tagged as a collaborator).
 
         For only entries submitted by the BotBr, set submitted_only to True.
 
@@ -571,7 +573,13 @@ class BotB:
         if conditions:
             _conditions = conditions | _conditions
 
-        return self.entry_list(desc=desc, sort=sort, filters=filters, conditions=_conditions, max_items=max_items)
+        return self.entry_list(
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=_conditions,
+            max_items=max_items,
+        )
 
     def botbr_get_favorite_entries(
         self,
@@ -594,15 +602,21 @@ class BotB:
             instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
-        :returns: List of Entry objects representing the list results. If the
-            search returned no results, the list will be empty.
+        :returns: List of Entry objects representing the list results. If the search
+            returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
         """
         _conditions = [Condition("id", "IN_SUBQUERY:botbr_favorites", botbr_id)]
         if conditions:
             _conditions = conditions | _conditions
 
-        return self.entry_list(desc=desc, sort=sort, filters=filters, conditions=_conditions, max_items=max_items)
+        return self.entry_list(
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=_conditions,
+            max_items=max_items,
+        )
 
     def botbr_get_palettes(
         self,
@@ -836,7 +850,8 @@ class BotB:
 
     def battle_list_by_date(self, date: Union[str, dt_date, datetime]) -> List[Battle]:
         """
-        List all battles that happened/were ongoing on this year-month-day date (EST timezone).
+        List all battles that happened/were ongoing on this year-month-day date (EST
+        timezone).
 
         :api: /api/v1/battle/current
         :param date: Date to look for; either a string in "YYYY-MM-DD" format
@@ -845,7 +860,9 @@ class BotB:
             matching battles, the list will be empty.
         :raises ConnectionError: On connection error.
         """
-        _valueerror_message = "Param \"date\" must be a string in YYYY-MM-DD format or a datetime object"
+        _valueerror_message = (
+            'Param "date" must be a string in YYYY-MM-DD format or a datetime object'
+        )
 
         # If the date is a string, convert it to a date object for validation.
         if isinstance(date, str):
@@ -860,7 +877,9 @@ class BotB:
         else:
             raise ValueError(_valueerror_message)
 
-        ret = self._s.get(f"https://battleofthebits.com/api/v1/battle/list_by_date/{date_str}")
+        ret = self._s.get(
+            f"https://battleofthebits.com/api/v1/battle/list_by_date/{date_str}"
+        )
         if ret.status_code != 200:
             raise ConnectionError(f"{ret.status_code}: {ret.text}")
 
@@ -876,8 +895,8 @@ class BotB:
 
     def battle_list_by_month(self, date: str = "") -> List[Battle]:
         """
-        List all battles that happened/were ongoing on the specified month in the specified year
-        (EST timezone).
+        List all battles that happened/were ongoing on the specified month in the
+        specified year (EST timezone).
 
         :api: /api/v1/battle/current
         :param date: Date as a YYYY-MM string.
@@ -887,7 +906,9 @@ class BotB:
             matching battles, the list will be empty.
         :raises ConnectionError: On connection error.
         """
-        ret = self._s.get(f"https://battleofthebits.com/api/v1/battle/list_by_month/{date}")
+        ret = self._s.get(
+            f"https://battleofthebits.com/api/v1/battle/list_by_month/{date}"
+        )
         if ret.status_code != 200:
             raise ConnectionError(f"{ret.status_code}: {ret.text}")
 

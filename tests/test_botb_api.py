@@ -115,7 +115,9 @@ def test_botb_api_battle(botb):
     for b in ret:
         assert type(b) is pybotb.types.Battle
 
-    assert set([b1.id for b1 in ret]) == set([b2.id for b2 in botb.battle_list_by_date(dt_date(year=2024, month=4, day=20))])
+    assert set([b1.id for b1 in ret]) == set(
+        [b2.id for b2 in botb.battle_list_by_date(dt_date(year=2024, month=4, day=20))]
+    )
 
     ret = botb.battle_list_by_month("2024-04")
     for b in ret:
