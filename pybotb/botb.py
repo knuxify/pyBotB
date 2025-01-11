@@ -65,17 +65,21 @@ class PaginatedList:
     possible (500 per page), unless max_items is set to a lower value.
     """
 
-    def __init__(self, func: Callable, max_items: int = 0, *args, **kwargs):
+    def __init__(
+        self, func: Callable, max_items: int = 0, offset: int = 0, *args, **kwargs
+    ):
         """
         Initialize a paginated iterator.
 
         :param func: List function to call; must take page_number and page_length
             values.
+        :param offset: Skip the first N items.
         :param max_items: Maximum amount of items to return; 0 for no limit.
         :param args: Arguments to pass to the list function.
         :param kwargs: Keyword arguments to pass to the list function.
         """
         self.func = func
+        self.offset = offset
         self.max_items = max_items
         self.args = args
         self.kwargs = kwargs
@@ -95,6 +99,11 @@ class PaginatedList:
             page_length = min(self.max_items, 500)
         else:
             page_length = 500
+
+        if self.offset:
+            count = self.offset
+            page = self.offset // page_length
+            index = self.offset % page_length
 
         ret = self.func(
             *self.args, **self.kwargs, page_number=page, page_length=page_length
@@ -427,9 +436,10 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[BotBr]:
         """
-        Search for BotBrs that match the given query (Non-PaginatedList version).
+        Search for BotBrs that match the given query.
 
         For a list of supported filter/condition properties, see :py:class:`.BotBr`.
 
@@ -441,6 +451,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of BotBr objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
@@ -454,6 +465,7 @@ class BotB:
             filters=filters,
             conditions=conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def botbr_random(self) -> BotBr:
@@ -492,19 +504,22 @@ class BotB:
 
         return out
 
-    def botbr_search(self, query: str, max_items: int = 0) -> Iterable[BotBr]:
+    def botbr_search(
+        self, query: str, max_items: int = 0, offset: int = 0
+    ) -> Iterable[BotBr]:
         """
         Search for BotBrs that match the given query.
 
         :api: /api/v1/botbr/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of BotBr objects representing the search results. If the
             search returned no results, the resulting iterable will return no results.
         :raises ConnectionError: On connection error.
         """
         return PaginatedList(
-            self._botbr_search_noiter, query=query, max_items=max_items
+            self._botbr_search_noiter, query=query, max_items=max_items, offset=offset
         )
 
     def botbr_get_id_for_username(self, username: str) -> Union[int, None]:
@@ -744,9 +759,10 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[Battle]:
         """
-        Search for battles that match the given query (Non-PaginatedList version).
+        Search for battles that match the given query.
 
         For a list of supported filter/condition properties, see :py:class:`.Battle`.
 
@@ -758,6 +774,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of Battle objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
@@ -771,6 +788,7 @@ class BotB:
             filters=filters,
             conditions=conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def battle_random(self) -> Battle:
@@ -809,20 +827,23 @@ class BotB:
 
         return out
 
-    def battle_search(self, query: str, max_items: int = 0) -> Iterable[Battle]:
+    def battle_search(
+        self, query: str, max_items: int = 0, offset: int = 0
+    ) -> Iterable[Battle]:
         """
         Search for battles that match the given query.
 
         :api: /api/v1/battle/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of Battle objects representing the search results. If
             the search returned no results, the resulting iterable will return no
             results.
         :raises ConnectionError: On connection error.
         """
         return PaginatedList(
-            self._battle_search_noiter, query=query, max_items=max_items
+            self._battle_search_noiter, query=query, max_items=max_items, offset=offset
         )
 
     def battle_current(self) -> List[Battle]:
@@ -992,9 +1013,10 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[Entry]:
         """
-        Search for entries that match the given query (Non-PaginatedList version).
+        Search for entries that match the given query.
 
         For a list of supported filter/condition properties, see :py:class:`.Entry`.
 
@@ -1006,6 +1028,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of Entry objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
@@ -1019,6 +1042,7 @@ class BotB:
             filters=filters,
             conditions=conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def entry_random(self) -> Entry:
@@ -1057,7 +1081,9 @@ class BotB:
 
         return out
 
-    def entry_search(self, query: str, max_items: int = 0) -> Iterable[Entry]:
+    def entry_search(
+        self, query: str, max_items: int = 0, offset: int = 0
+    ) -> Iterable[Entry]:
         """
         Search for entries that match the given query.
 
@@ -1069,7 +1095,7 @@ class BotB:
         :raises ConnectionError: On connection error.
         """
         return PaginatedList(
-            self._entry_search_noiter, query=query, max_items=max_items
+            self._entry_search_noiter, query=query, max_items=max_items, offset=offset
         )
 
     def entry_get_tags(
@@ -1112,7 +1138,9 @@ class BotB:
             max_items=max_items,
         )
 
-    def entry_get_playlist_ids(self, entry_id: int, max_items: int = 0) -> List[int]:
+    def entry_get_playlist_ids(
+        self, entry_id: int, max_items: int = 0, offset: int = 0
+    ) -> List[int]:
         """
         Get a list containing the playlist IDs of playlists that this entry has been
         added to.
@@ -1121,13 +1149,15 @@ class BotB:
 
         :param entry_id: ID of the entry to load the playlists of.
         :param max_items: Maximum number of items to return; set to 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: List of playlist IDs.
         :raises ConnectionError: On connection error.
         """
         ret = PaginatedList(
-            self.playlist_to_entry_list,
+            self._playlist_to_entry_list_noiter,
             filters={"entry_id": entry_id},
             max_items=max_items,
+            offset=offset,
         )
         if not ret:
             return []
@@ -1264,9 +1294,10 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[Favorite]:
         """
-        Search for favorites that match the given query (Non-PaginatedList version).
+        Search for favorites that match the given query.
 
         For a list of supported filter/condition properties, see :py:class:`.Favorite`.
 
@@ -1278,6 +1309,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of Favorite objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
@@ -1291,6 +1323,7 @@ class BotB:
             filters=filters,
             conditions=conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def favorite_random(self) -> Favorite:
@@ -1375,9 +1408,10 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[Format]:
         """
-        Search for formats that match the given query (Non-PaginatedList version).
+        Search for formats that match the given query.
 
         For a list of supported filter/condition properties, see :py:class:`.Format`.
 
@@ -1389,6 +1423,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of Format objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
@@ -1402,6 +1437,7 @@ class BotB:
             filters=filters,
             conditions=conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def format_random(self) -> Format:
@@ -1487,9 +1523,10 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[GroupThread]:
         """
-        Search for group threads that match the given query (Non-PaginatedList version).
+        Search for group threads that match the given query.
 
         For a list of supported filter/condition properties, see :py:class:`.GroupThread`.
 
@@ -1501,6 +1538,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of GroupThread objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
@@ -1514,6 +1552,7 @@ class BotB:
             filters=filters,
             conditions=conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def group_thread_random(self) -> GroupThread:
@@ -1553,7 +1592,7 @@ class BotB:
         return out
 
     def group_thread_search(
-        self, query: str, max_items: int = 0
+        self, query: str, max_items: int = 0, offset: int = 0
     ) -> Iterable[GroupThread]:
         """
         Search for group threads that match the given query.
@@ -1561,13 +1600,17 @@ class BotB:
         :api: /api/v1/group_thread/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of GroupThread objects representing the search results.
             If the search returned no results, the resulting iterable will return no
             results.
         :raises ConnectionError: On connection error.
         """
         return PaginatedList(
-            self._group_thread_search_noiter, query=query, max_items=max_items
+            self._group_thread_search_noiter,
+            query=query,
+            max_items=max_items,
+            offset=offset,
         )
 
     #
@@ -1642,10 +1685,10 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[LyceumArticle]:
         """
-        Search for lyceum articles that match the given query (Non-PaginatedList
-        version).
+        Search for lyceum articles that match the given query.
 
         For a list of supported filter/condition properties, see :py:class:`.LyceumArticle`.
 
@@ -1657,6 +1700,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of LyceumArticle objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
@@ -1670,6 +1714,7 @@ class BotB:
             filters=filters,
             conditions=conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def lyceum_article_random(self) -> LyceumArticle:
@@ -1709,7 +1754,10 @@ class BotB:
         return out
 
     def lyceum_article_search(
-        self, query: str, max_items: int = 0
+        self,
+        query: str,
+        max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[LyceumArticle]:
         """
         Search for lyceum articles that match the given query.
@@ -1717,13 +1765,17 @@ class BotB:
         :api: /api/v1/lyceum_article/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of LyceumArticle objects representing the search
             results. If the search returned no results, the resulting iterable will
             return no results.
         :raises ConnectionError: On connection error.
         """
         return PaginatedList(
-            self._lyceum_article_search_noiter, query=query, max_items=max_items
+            self._lyceum_article_search_noiter,
+            query=query,
+            max_items=max_items,
+            offset=offset,
         )
 
     #
@@ -1797,9 +1849,10 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[Palette]:
         """
-        Search for palettes that match the given query (Non-PaginatedList version).
+        Search for palettes that match the given query.
 
         For a list of supported filter/condition properties, see :py:class:`.Palette`.
 
@@ -1811,6 +1864,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of Palette objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
@@ -1824,6 +1878,7 @@ class BotB:
             filters=filters,
             conditions=conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def palette_random(self) -> Palette:
@@ -1928,9 +1983,10 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[Playlist]:
         """
-        Search for playlists that match the given query (Non-PaginatedList version).
+        Search for playlists that match the given query.
 
         For a list of supported filter/condition properties, see :py:class:`.Playlist`.
 
@@ -1942,6 +1998,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of Playlist objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
@@ -1955,6 +2012,7 @@ class BotB:
             filters=filters,
             conditions=conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def playlist_random(self) -> Playlist:
@@ -1993,23 +2051,29 @@ class BotB:
 
         return out
 
-    def playlist_search(self, query: str, max_items: int = 0) -> Iterable[Playlist]:
+    def playlist_search(
+        self, query: str, max_items: int = 0, offset: int = 0
+    ) -> Iterable[Playlist]:
         """
         Search for playlists that match the given query.
 
         :api: /api/v1/playlist/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of Playlist objects representing the search results. If
             the search returned no results, the resulting iterable will return no
             results.
         :raises ConnectionError: On connection error.
         """
         return PaginatedList(
-            self._playlist_search_noiter, query=query, max_items=max_items
+            self._playlist_search_noiter,
+            query=query,
+            max_items=max_items,
+            offset=offset,
         )
 
-    def playlist_to_entry_list(
+    def _playlist_to_entry_list_noiter(
         self,
         page_number: int = 0,
         page_length: int = 25,
@@ -2056,7 +2120,9 @@ class BotB:
 
         return out
 
-    def playlist_get_entry_ids(self, playlist_id: int) -> List[int]:
+    def playlist_get_entry_ids(
+        self, playlist_id: int, max_items: int = 0, offset: int = 0
+    ) -> List[int]:
         """
         Get a list containing the entry IDs of the playlist with the given ID, in the
         order that they appear in the playlist.
@@ -2064,11 +2130,16 @@ class BotB:
         To get a list of entry objects, see `:method:.BotBr.playlist_get_entries`.
 
         :param playlist_id: ID of the playlist to load the entries of.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: List of entry IDs.
         :raises ConnectionError: On connection error.
         """
         ret = PaginatedList(
-            self.playlist_to_entry_list, filters={"playlist_id": playlist_id}
+            self._playlist_to_entry_list_noiter,
+            filters={"playlist_id": playlist_id},
+            max_items=max_items,
+            offset=offset,
         )
         if not ret:
             return []
@@ -2172,9 +2243,10 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[Tag]:
         """
-        Search for tags that match the given query (Non-PaginatedList version).
+        Search for tags that match the given query.
 
         For a list of supported filter/condition properties, see :py:class:`.Tag`.
 
@@ -2186,6 +2258,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of Tag objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
@@ -2199,6 +2272,7 @@ class BotB:
             filters=filters,
             conditions=conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def tag_random(self) -> Tag:
@@ -2237,18 +2311,23 @@ class BotB:
 
         return out
 
-    def tag_search(self, query: str, max_items: int = 0) -> Iterable[Tag]:
+    def tag_search(
+        self, query: str, max_items: int = 0, offset: int = 0
+    ) -> Iterable[Tag]:
         """
         Search for tags that match the given query.
 
         :api: /api/v1/tag/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of Tag objects representing the search results. If the
             search returned no results, the resulting iterable will return no results.
         :raises ConnectionError: On connection error.
         """
-        return PaginatedList(self._tag_search_noiter, query=query, max_items=max_items)
+        return PaginatedList(
+            self._tag_search_noiter, query=query, max_items=max_items, offset=offset
+        )
 
     #
     # BotBr stats
@@ -2305,9 +2384,10 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[BotBrStats]:
         """
-        Search for BotBr stats that match the given query (Non-PaginatedList version).
+        Search for BotBr stats that match the given query.
 
         For a list of supported filter/condition properties, see :py:class:`.BotBrStats`.
 
@@ -2319,6 +2399,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of BotBrStats objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
@@ -2332,6 +2413,7 @@ class BotB:
             filters=filters,
             conditions=conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def botbr_stats_by_botbr_id(self, botbr_id: int) -> List[BotBrStats]:
@@ -2472,9 +2554,10 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[DailyStats]:
         """
-        Search for daily stats that match the given query (Non-PaginatedList version).
+        Search for daily stats that match the given query.
 
         For a list of supported filter/condition properties, see :py:class:`.DailyStats`.
 
@@ -2486,6 +2569,7 @@ class BotB:
                         should be used instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of DailyStats objects representing the search results.
                   If the search returned no results, the resulting iterable will return no
                   results.
@@ -2499,6 +2583,7 @@ class BotB:
             filters=filters,
             conditions=conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def daily_stats_random(self) -> DailyStats:
