@@ -84,6 +84,30 @@ def test_botb_api_botbr(botb):
     for palette in ret:
         assert palette.botbr_id == 16333
 
+    ret = botb.botbr_get_badge_progress(16333)
+    assert ret
+    assert ret["s3xmodit"] > 15
+
+    ret = botb.botbr_get_tags_given(9635)
+    assert len(ret) > 0
+
+    ret = botb.botbr_get_tags_given(16352)
+    assert len(ret) == 0
+
+    ret = botb.botbr_get_tags_received(9635)
+    assert len(ret) > 0
+
+    ret = botb.botbr_get_tags_received(16352)
+    assert len(ret) == 0
+
+    ret = botb.botbr_get_avatars(16333)
+    assert len(ret) > 0
+
+    ret = [b for b in botb.botbr_get_battles_hosted(9635, max_items=25)]
+    assert len(ret) == 25
+    for b in ret:
+        assert type(b) is pybotb.types.Battle
+
 
 def test_botb_api_battle(botb):
     """Test battle API methods."""
@@ -378,6 +402,10 @@ def test_botb_api_tag(botb):
     assert ret
     for tag in ret:
         assert tag.entry_id == 71306
+
+    # Cloud by substring
+    ret = botb.tag_cloud_by_substring("core")
+    assert ret
 
 
 def test_botb_api_daily_stats(botb):

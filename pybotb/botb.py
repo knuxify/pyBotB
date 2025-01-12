@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 """Code for interfacing with BotB."""
 
+from bs4 import BeautifulSoup
 import dataclasses
 from dataclasses import dataclass
 from datetime import date as dt_date, datetime
@@ -130,6 +131,25 @@ class PaginatedList:
             yield ret[index]
             count += 1
             index += 1
+
+
+def parse_tag_cloud(cloud_html: str) -> Dict[str, int]:
+    """
+    Parse tag cloud HTML (as returned by the /api/v1/tag/cloud_by_substring API) into a
+    dictionary containing the tag as the key and the size as the value.
+
+    :param cloud_html: HTML to parse, as a string.
+    :returns: Dictionary with tag as the key and size in pixels as the value.
+    """
+    soup = BeautifulSoup(cloud_html, "lxml")
+
+    out = {}
+    for tag_a in soup.find_all("a"):
+        out[tag_a.text.replace(r"<\/a>", "").strip()] = int(
+            "".join([a for a in tag_a["style"].split("font-size:")[1] if a.isnumeric()])
+        )
+
+    return out
 
 
 class BotB:
@@ -559,6 +579,7 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[Entry]:
         """
         List all entries which the BotBr authored (i.e. both entries submitted by the
@@ -578,6 +599,7 @@ class BotB:
             instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: `PaginatedList` of Entry objects representing the list results. If the
             search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
@@ -604,6 +626,7 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[Entry]:
         """
         List all entries favorited by the BotBr with the given ID.
@@ -617,6 +640,7 @@ class BotB:
             instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: List of Entry objects representing the list results. If the search
             returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
@@ -631,6 +655,7 @@ class BotB:
             filters=filters,
             conditions=_conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def botbr_get_palettes(
@@ -641,6 +666,7 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[Palette]:
         """
         List all palettes created by the BotBr with the given ID.
@@ -657,6 +683,7 @@ class BotB:
             instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum number of items to return; set to 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: List of Palette objects representing the search results. If the search
             returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
@@ -671,6 +698,215 @@ class BotB:
             filters=_filters,
             conditions=conditions,
             max_items=max_items,
+        )
+
+    def botbr_get_badge_progress(self, botbr_id: int) -> Dict[str, int]:
+        """
+        Get the badge progress for the BotBr with the given ID.
+
+        This is the same as the list in the Badges tab of a BotBr's profile; if you're
+        only interested in which badges a BotBr has earned and which level they're at,
+        use the regular BotBr load/list/etc. endpoints - this information is returned by
+        the API.
+
+        **This is an unofficial method**; it uses parsed data from the site, not an API
+        endpoint.
+
+        :param botbr_id: ID of the BotBr to get badge progress for.
+        :returns: Dictionary with badge token as the key and progress as the value. Dict
+            will be empty if the BotBr was not found.
+        :raises ConnectionError: On connection error.
+        """
+        out = {}
+
+        ret = self._s.get(
+            f"https://battleofthebits.com/ajax/req/botbr/AjaxBadges/{botbr_id}"
+        )
+        if ret.status_code == 500 and not ret.text:
+            # Not found
+            return out
+
+        soup = BeautifulSoup(ret.text, "lxml")
+
+        # .grid_4 > .inner:
+        #   - div.t0.fright (progress / next threshold) \t (percentage)
+        #   - div.botb-icon (icon)
+        #   - span.tb1 (format name)
+        for entry in soup.html.body.find_all("div", "grid_4"):
+            inner = list(entry.contents)[1]
+            format = inner.find_all("span", "tb1")[0].text.strip()
+            progress = int(inner.find_all("div", "t0")[0].text.split("/")[0].strip())
+            out[format] = progress
+
+        return out
+
+    def botbr_get_tags_given(self, botbr_id: int) -> List[str]:
+        """
+        List tags given by the BotBr.
+
+        This is the same as the list in the Tags tab of a BotBr's profile.
+
+        **This is an unofficial method**; it uses parsed data from the site, not an API
+        endpoint.
+
+        :param botbr_id: ID of the BotBr to get given tags for.
+        :returns: List of given tags. List will be empty if the BotBr was not found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._s.get(
+            f"https://battleofthebits.com/ajax/req/botbr/AjaxTag/{botbr_id}"
+        )
+        if ret.status_code == 500 and not ret.text:
+            # Not found
+            return []
+
+        soup = BeautifulSoup(ret.text, "lxml")
+
+        # First <p> element is Tags Given
+        return list(parse_tag_cloud(soup.find_all("p")[0].prettify()).keys())
+
+    def botbr_get_tags_received(self, botbr_id: int) -> List[str]:
+        """
+        List tags received by the BotBr.
+
+        This is the same as the list in the Tags tab of a BotBr's profile.
+
+        **This is an unofficial method**; it uses parsed data from the site, not an API
+        endpoint.
+
+        :param botbr_id: ID of the BotBr to get received tags for.
+        :returns: List of given tags. List will be empty if the BotBr was not found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._s.get(
+            f"https://battleofthebits.com/ajax/req/botbr/AjaxTag/{botbr_id}"
+        )
+        if ret.status_code == 500 and not ret.text:
+            # Not found
+            return []
+
+        soup = BeautifulSoup(ret.text, "lxml")
+
+        # Second <p> element is Tags Received
+        return list(parse_tag_cloud(soup.find_all("p")[1].prettify()).keys())
+
+    def botbr_get_avatars(self, botbr_id: int) -> List[str]:
+        """
+        List the URLs of the current and all past avatars of the BotBr.
+
+        This is the same as the list in the Avatars tab of a BotBr's profile.
+
+        **This is an unofficial method**; it uses parsed data from the site, not an API
+        endpoint.
+
+        :param botbr_id: ID of the BotBr to get avatars for.
+        :returns: List of avatar URLs. List will be empty if the BotBr was not found or
+            had no avatars or has avatar history disabled.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._s.get(
+            f"https://battleofthebits.com/ajax/req/botbr/AjaxAvatars/{botbr_id}"
+        )
+        if ret.status_code == 500 and not ret.text:
+            # Not found
+            return []
+
+        soup = BeautifulSoup(ret.text, "lxml")
+
+        return [
+            "https://battleofthebits.com" + img["src"] for img in soup.find_all("img")
+        ]
+
+    def botbr_get_battles_hosted(
+        self,
+        botbr_id: int,
+        submitted_only: bool = False,
+        desc: bool = True,
+        sort: Optional[str] = "id",
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+        offset: int = 0,
+    ) -> Iterable[Battle]:
+        """
+        Get a list of battles hosted by the BotBr with the given ID.
+
+        This is the same as the list in the Battles Hosted tab of a BotBr's profile
+        (so, it includes battles both directly hosted *and* co-hosted by the BotBr).
+
+        **This is an unofficial method**; it uses parsed data from the site,
+        not an API endpoint. A similar endpoint could be implemented with just
+        API methods; in which case, one would have to combine the following queries:
+
+        - "botbr_id" matches the ID of the botbr;
+        - If there's a + sign in "hosts_names" (and the BotBr hosting the battle doesn't simply
+          have a + in their username), it's a cohosted battle.
+          Names are joined by + signs; you'll likely need to perform three "hosts_names LIKE"
+          conditions to get them correctly: "{name} +%", "%+ {name} +%" and "%+ {name}".
+
+        Since this is a lot of work and cannot be easily combined into one iterable
+        (not with our tools, anyways! Maybe in the future...), we just parse the site
+        instead.
+
+        :param botbr_id: ID of the BotBr to get avatars for.
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
+        :returns: `PaginatedList` of battles that the BotBr hosted/co-hosted.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._s.get(
+            f"https://battleofthebits.com/ajax/req/botbr/AjaxHosted/{botbr_id}"
+        )
+
+        if ret.status_code == 500 and not ret.text:
+            # Not found
+            return []
+
+        soup = BeautifulSoup(ret.text, "lxml")
+        battle_ids = []
+
+        i = 0
+        for battle_a in soup.find_all("a"):
+            battle_url = battle_a["href"]
+            if not battle_url:
+                continue
+
+            battle_id = int(
+                battle_url.split("https://battleofthebits.com/arena/Battle/")[1].split(
+                    "/"
+                )[0]
+            )
+            battle_ids.append(battle_id)
+
+            i += 1
+            if (
+                max_items > 0
+                and i > max_items
+                and sort == "id"
+                and desc is True
+                and not filters
+                and not conditions
+                and not offset
+            ):
+                break
+
+        _conditions = [Condition("id", "IN", battle_ids)]
+        if conditions:
+            _conditions = conditions | _conditions
+
+        return self.battle_list(
+            sort=sort,
+            desc=desc,
+            filters=filters,
+            conditions=_conditions,
+            max_items=max_items,
+            offset=offset,
         )
 
     #
@@ -1090,6 +1326,7 @@ class BotB:
         :api: /api/v1/entry/search
         :param query: Search query for the search.
         :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: :class:`PaginatedList` of Entry objects representing the search results. If the
             search returned no results, the resulting iterable will return no results.
         :raises ConnectionError: On connection error.
@@ -1106,6 +1343,7 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[Tag]:
         """
         List all tags given to entry with the given ID.
@@ -1122,6 +1360,7 @@ class BotB:
             instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum number of items to return; set to 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: List of Tag objects representing the search results. If the search
             returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
@@ -1136,6 +1375,7 @@ class BotB:
             filters=_filters,
             conditions=conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def entry_get_playlist_ids(
@@ -1165,13 +1405,17 @@ class BotB:
         return [p.playlist_id for p in ret]
 
     def entry_get_playlists(
-        self, entry_id: int, max_items: int = 0
+        self,
+        entry_id: int,
+        max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[Playlist]:
         """
         Get a list of playlists that this entry has been added to.
 
         :param entry_id: ID of the playlist to load the entries of.
         :param max_items: Maximum number of items to return; set to 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: List of Playlist objects.
         :raises ConnectionError: On connection error.
         """
@@ -1180,7 +1424,7 @@ class BotB:
         condition = Condition("id", "IN", playlist_ids)
 
         return self.playlist_list(
-            sort="id", conditions=[condition], max_items=max_items
+            sort="id", conditions=[condition], max_items=max_items, offset=offset
         )
 
     def entry_get_favorites(
@@ -1191,6 +1435,7 @@ class BotB:
         filters: Optional[Dict[str, Any]] = None,
         conditions: Optional[List[Condition]] = None,
         max_items: int = 0,
+        offset: int = 0,
     ) -> Iterable[Favorite]:
         """
         List all favorites for the entry with the given ID.
@@ -1207,6 +1452,7 @@ class BotB:
             instead.
         :param conditions: List of Condition objects containing list conditions.
         :param max_items: Maximum number of items to return; set to 0 for no limit.
+        :param offset: Skip the first N items.
         :returns: List of Favorite objects representing the search results. If the
             search returned no results, the list will be empty.
         :raises ConnectionError: On connection error.
@@ -2328,6 +2574,37 @@ class BotB:
         return PaginatedList(
             self._tag_search_noiter, query=query, max_items=max_items, offset=offset
         )
+
+    def tag_cloud_by_substring_html(self, substring: str) -> str:
+        """
+        Get the HTML representation of a tag cloud for tags matching the substring.
+
+        :method:`.tag_cloud_by_substring` parses the HTML data into a dict of
+        tag: size pairs for convenience.
+
+        :api: /api/v1/tag/cloud_by_substring
+        :param substring: String to pass as the search substring.
+        :returns: String containing the HTML representation of the tag cloud.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._s.get(
+            f"https://battleofthebits.com/api/v1/tag/cloud_by_substring/{substring}"
+        )
+
+        return ret.text
+
+    def tag_cloud_by_substring(self, substring: str) -> Dict[str, int]:
+        """
+        Get a tag cloud by the given substring; returns a dict of tag: size pairs.
+
+        :api: /api/v1/tag/cloud_by_substring
+        :param substring: String to pass as the search substring.
+        :returns: Dict with tag name as the key and size in pixels as the value.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self.tag_cloud_by_substring_html(substring)
+
+        return parse_tag_cloud(ret)
 
     #
     # BotBr stats
