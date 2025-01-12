@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 import dataclasses
 from dataclasses import dataclass
 from datetime import date as dt_date, datetime
+from functools import cached_property
 from typing import (
     Any,
     Callable,
@@ -541,6 +542,17 @@ class BotB:
         return PaginatedList(
             self._botbr_search_noiter, query=query, max_items=max_items, offset=offset
         )
+
+    @cached_property
+    def botbr_levels(self) -> List[int]:
+        """
+        List of level-up steps for a BotBr, from level 0 to 34 (the maximum).
+
+        :api: /api/v1/botbr/levels
+        """
+        ret = self._s.get("https://battleofthebits.com/api/v1/botbr/levels")
+
+        return ret.json()
 
     def botbr_get_id_for_username(self, username: str) -> Union[int, None]:
         """

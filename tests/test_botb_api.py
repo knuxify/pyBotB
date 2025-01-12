@@ -72,6 +72,8 @@ def test_botb_api_botbr(botb):
     assert ret[0].id == 70736
 
     # pyBotB convenience wrappers
+    assert botb.botbr_levels[0] == 0
+
     assert botb.botbr_get_id_for_username("uart") == 16333
     assert botb.botbr_load_for_username("uart") == botb.botbr_load(16333)
 
