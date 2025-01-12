@@ -54,6 +54,13 @@ class Session(requests.Session):
         if retry_count > MAX_RETRIES:
             raise ConnectionError("Maximum retries reached")
 
+        # Set user agent
+        if "headers" in kwargs:
+            if "User-Agent" not in kwargs["headers"]:
+                kwargs["headers"]["User-Agent"] = self.user_agent
+        else:
+            kwargs["headers"] = {"User-Agent": self.user_agent}
+
         try:
             ret = super().get(url, *args, **kwargs)
             if ret.status_code == 500 and handle_notfound:
@@ -69,10 +76,20 @@ class Session(requests.Session):
             return self.get(url, retry_count + 1, **kwargs)
         return ret
 
+    def post(self, *args, **kwargs):  # type: ignore
+        """Make a POST request to an URL; wrapper that fills in user agent."""
+        # Set user agent
+        if "headers" in kwargs:
+            if "User-Agent" not in kwargs["headers"]:
+                kwargs["headers"]["User-Agent"] = self.user_agent
+        else:
+            kwargs["headers"] = {"User-Agent": self.user_agent}
+
+        return super().post(*args, **kwargs)
+
     def set_user_agent(self, user_agent: str):
         """Set the User-Agent header to a specific string."""
-        headers = requests.utils.default_headers()
-        headers.update({"User-Agent": user_agent})
+        self.user_agent = user_agent
 
 
 def payload_cast(in_value: Any, out_type: type) -> Any:
