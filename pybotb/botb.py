@@ -724,7 +724,7 @@ class BotB:
             will be empty if the BotBr was not found.
         :raises ConnectionError: On connection error.
         """
-        out = {}
+        out: Dict[str, int] = {}
 
         ret = self._s.get(
             f"https://battleofthebits.com/ajax/req/botbr/AjaxBadges/{botbr_id}"
@@ -739,7 +739,7 @@ class BotB:
         #   - div.t0.fright (progress / next threshold) \t (percentage)
         #   - div.botb-icon (icon)
         #   - span.tb1 (format name)
-        for entry in soup.html.body.find_all("div", "grid_4"):
+        for entry in soup.html.body.find_all("div", "grid_4"):  # type: ignore
             inner = list(entry.contents)[1]
             format = inner.find_all("span", "tb1")[0].text.strip()
             progress = int(inner.find_all("div", "t0")[0].text.split("/")[0].strip())
