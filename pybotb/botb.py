@@ -622,6 +622,7 @@ class BotB:
             filters=filters,
             conditions=_conditions,
             max_items=max_items,
+            offset=offset,
         )
 
     def botbr_get_favorite_entries(
