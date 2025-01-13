@@ -153,7 +153,7 @@ class BotB:
     Lyceum (https://battleofthebits.com/lyceum/View/BotB+API+v1).
     """
 
-    def __init__(self, app_name=str):
+    def __init__(self, app_name: Optional[str] = None):
         """
         Initialize the BotB API access object.
 
@@ -162,6 +162,8 @@ class BotB:
         """
         #: Internal Session object.
         self._s = Session()
+        if app_name:
+            self.app_name = app_name
 
     @property
     def app_name(self) -> str:
