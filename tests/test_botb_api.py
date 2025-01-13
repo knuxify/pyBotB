@@ -177,13 +177,13 @@ def test_botb_api_entry(botb):
     # List with conditions
     ret = botb.entry_list(
         conditions=[
-            Condition("donloads", ">", 5),
-            Condition("votes", "<", 10),
+            Condition("id", ">", 5),
+            Condition("donloads", "<", 10),
         ],
     )
     for entry in ret:
-        assert entry.donloads > 5
-        assert entry.votes < 10
+        assert entry.id > 5
+        assert entry.donloads < 10
 
     # Note - this test may be flaky if the conditions aren't right.
     # (i.e. if the top 250 visualls all have more favs than the top
