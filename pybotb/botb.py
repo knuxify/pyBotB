@@ -50,14 +50,6 @@ class Condition:
     #: Operand for the condition.
     operand: Union[int, str, bool, List[Any], Tuple[Any]]
 
-    def to_dict(self) -> dict:
-        """
-        Return the condition as a dictionary that can be passed to the list API.
-
-        :returns: The condition represented as a dictionary.
-        """
-        return dataclasses.asdict(self)
-
 
 class PaginatedList:
     """
