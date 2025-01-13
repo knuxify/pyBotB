@@ -2,7 +2,6 @@
 """Code for interfacing with BotB."""
 
 from bs4 import BeautifulSoup
-import dataclasses
 from dataclasses import dataclass
 from datetime import date as dt_date, datetime
 from functools import cached_property
