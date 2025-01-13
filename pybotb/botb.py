@@ -2618,6 +2618,67 @@ class BotB:
 
         return parse_tag_cloud(ret)
 
+    def tag_get_entry_ids(self, tag: str) -> List[int]:
+        """
+        Get a list of entry IDs which have this tag.
+
+        :param tag: Tag to fetch entries for.
+        :returns: `PaginatedList` of entries which have the given tag.
+        :raises ConnectionError: On connection error.
+        """
+        return list(
+            set(
+                [
+                    t.entry_id
+                    for t in self.tag_list(
+                        sort="id", conditions=[Condition("tag", "LIKE", tag)]
+                    )
+                ]
+            )
+        )
+
+    def tag_get_entries(
+        self,
+        tag: str,
+        desc: bool = True,
+        sort: Optional[str] = "id",
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+        offset: int = 0,
+    ) -> Iterable[Entry]:
+        """
+        Get a `PaginatedList` of entries which have this tag.
+
+        :param tag: Tag to fetch entries for.
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
+        :returns: `PaginatedList` of entries which have the given tag.
+        :raises ConnectionError: On connection error.
+        """
+        entry_ids = self.tag_get_entry_ids(tag)
+        if not entry_ids:
+            return []
+
+        _conditions = [Condition("id", "IN", entry_ids)]
+        if conditions:
+            _conditions = conditions | _conditions
+
+        return self.entry_list(
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=_conditions,
+            max_items=max_items,
+            offset=offset,
+        )
+
     #
     # BotBr stats
     #

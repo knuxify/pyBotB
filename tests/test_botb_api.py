@@ -409,6 +409,10 @@ def test_botb_api_tag(botb):
     ret = botb.tag_cloud_by_substring("core")
     assert ret
 
+    # Get entries
+    ret = [e for e in botb.tag_get_entries("ambient", max_items=25)]
+    assert len(ret) == 25
+
 
 def test_botb_api_daily_stats(botb):
     """Test daily_stats API methods."""
