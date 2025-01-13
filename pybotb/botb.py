@@ -614,7 +614,7 @@ class BotB:
         if submitted_only:
             _conditions.append(Condition("botbr_id", "=", botbr_id))
         if conditions:
-            _conditions = conditions | _conditions
+            _conditions = conditions + _conditions
 
         return self.entry_list(
             desc=desc,
@@ -654,7 +654,7 @@ class BotB:
         """
         _conditions = [Condition("id", "IN_SUBQUERY:botbr_favorites", botbr_id)]
         if conditions:
-            _conditions = conditions | _conditions
+            _conditions = conditions + _conditions
 
         return self.entry_list(
             desc=desc,
@@ -905,7 +905,7 @@ class BotB:
 
         _conditions = [Condition("id", "IN", battle_ids)]
         if conditions:
-            _conditions = conditions | _conditions
+            _conditions = conditions + _conditions
 
         return self.battle_list(
             sort=sort,
@@ -2663,7 +2663,7 @@ class BotB:
 
         _conditions = [Condition("id", "IN", entry_ids)]
         if conditions:
-            _conditions = conditions | _conditions
+            _conditions = conditions + _conditions
 
         return self.entry_list(
             desc=desc,
