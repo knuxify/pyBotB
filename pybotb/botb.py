@@ -916,6 +916,41 @@ class BotB:
             offset=offset,
         )
 
+    def botbr_get_country_code(self, botbr_id: int) -> Union[str, None]:
+        """
+        Get the two-letter country code of the BotBr.
+
+        **This is an unofficial method**; it uses parsed data from the site, not an API
+        endpoint.
+
+        :param botbr_id: ID of the BotBr to get the country code for.
+        :returns: String containing the two-letter country code, or None if the user was
+            not found.
+        :raises ConnectionError: On connection error.
+        """
+        botbr = self.botbr_load(botbr_id)
+        if not botbr:
+            return None
+
+        ret = self._s.get(f"https://battleofthebits.com/barracks/Profile/{botbr.name}")
+
+        soup = BeautifulSoup(ret.text, "lxml")
+
+        try:
+            flag_class = (
+                soup.find(id="pageBG")
+                .find("div", "grid_1")
+                .find("div", "grid_8")
+                .find("div", "flag")["class"]
+            )
+            for c in flag_class:
+                if c.startswith("icons-flag-"):
+                    return c[11:]
+        except (AttributeError, IndexError, KeyError, TypeError):
+            return None
+
+        return None
+
     #
     # Battles
     #

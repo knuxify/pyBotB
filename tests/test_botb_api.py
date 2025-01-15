@@ -77,38 +77,52 @@ def test_botb_api_botbr(botb):
     assert botb.botbr_get_id_for_username("uart") == 16333
     assert botb.botbr_load_for_username("uart") == botb.botbr_load(16333)
 
+    # Get favorite entries
     ret = botb.botbr_get_favorite_entries(16333, max_items=50)
     for b in ret:
         assert type(b) is pybotb.types.Entry
 
+    # Get palettes
     ret = botb.botbr_get_palettes(16333)
     assert ret
     for palette in ret:
         assert palette.botbr_id == 16333
 
+    # Get badge progress
     ret = botb.botbr_get_badge_progress(16333)
     assert ret
     assert ret["s3xmodit"] > 15
 
+    # Get tags given
     ret = botb.botbr_get_tags_given(9635)
     assert len(ret) > 0
 
     ret = botb.botbr_get_tags_given(16352)
     assert len(ret) == 0
 
+    # Get tags received
     ret = botb.botbr_get_tags_received(9635)
     assert len(ret) > 0
 
     ret = botb.botbr_get_tags_received(16352)
     assert len(ret) == 0
 
+    # Get avatars
     ret = botb.botbr_get_avatars(16333)
     assert len(ret) > 0
 
+    # Get battles hosted
     ret = [b for b in botb.botbr_get_battles_hosted(9635, max_items=25)]
     assert len(ret) == 25
     for b in ret:
         assert type(b) is pybotb.types.Battle
+
+    # Get country code
+    ret = botb.botbr_get_country_code(16352)
+    assert ret == "id"
+
+    ret = botb.botbr_get_country_code(123456787654321)
+    assert ret is None
 
 
 def test_botb_api_battle(botb):
