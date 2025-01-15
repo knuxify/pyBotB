@@ -741,8 +741,8 @@ class BotB:
         #   - span.tb1 (format name)
         for entry in soup.html.body.find_all("div", "grid_4"):  # type: ignore
             inner = list(entry.contents)[1]
-            format = inner.find_all("span", "tb1")[0].text.strip()
-            progress = int(inner.find_all("div", "t0")[0].text.split("/")[0].strip())
+            format = inner.find("span", "tb1").text.strip()
+            progress = int(inner.find("div", "t0").text.split("/")[0].strip())
             out[format] = progress
 
         return out
@@ -770,7 +770,7 @@ class BotB:
         soup = BeautifulSoup(ret.text, "lxml")
 
         # First <p> element is Tags Given
-        return list(parse_tag_cloud(soup.find_all("p")[0].prettify()).keys())
+        return list(parse_tag_cloud(soup.find("p").prettify()).keys())
 
     def botbr_get_tags_received(self, botbr_id: int) -> List[str]:
         """
@@ -1245,8 +1245,8 @@ class BotB:
         soup = BeautifulSoup(ret.text, "lxml")
         try:
             return (
-                soup.find_all("div", "inner")[0]
-                .find_all("div", "t1")[0]
+                soup.find("div", "inner")
+                .find("div", "t1")
                 .decode_contents()
             )
         except (AttributeError, IndexError, KeyError):
@@ -1277,7 +1277,7 @@ class BotB:
         try:
             return [
                 c.strip()
-                for c in soup.find_all("ul", "noBullet")[0].text.split(" &bullet; ")
+                for c in soup.find("ul", "noBullet").text.split(" &bullet; ")
             ]
         except (AttributeError, IndexError, KeyError):
             return None
