@@ -7,4 +7,4 @@ writing bots.
 VERSION = "0.0.1"
 VERSION_TUPLE = (0, 0, 1)
 
-from .botb import BotB as BotB, Condition as Condition  # ignore: E402
+from .botb import BotB as BotB, Condition as Condition  # noqa: E402
