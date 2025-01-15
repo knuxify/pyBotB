@@ -1185,6 +1185,109 @@ class BotB:
             out.append(Battle.from_payload(b))
         return out
 
+    def battle_get_description(self, battle_id: int) -> Union[str, None]:
+        """
+        Get the description of a major battle.
+
+        **This is an unofficial method**; it uses parsed data from the site, not an API
+        endpoint.
+
+        :returns: HTML representation of battle description as a string or None if the
+            battle is not a major.
+        :raises ConnectionError: On connection error
+        """
+        battle = self.battle_load(battle_id)
+        if not battle or not battle.is_major:
+            return None
+
+        ret = self._s.get(
+            f"https://battleofthebits.com/ajax/req/Battle/AjaxInfoRules/{battle_id}"
+        )
+        if ret.status_code != 200:
+            raise ConnectionError(f"{ret.status_code}: {ret.text}")
+
+        soup = BeautifulSoup(ret.text, "lxml")
+        try:
+            return (
+                soup.find_all("div", "inner")[0]
+                .find_all("div", "t1")[0]
+                .decode_contents()
+            )
+        except (AttributeError, IndexError, KeyError):
+            return ""
+
+    def battle_get_voting_categories(self, battle_id: int) -> Union[List[str], None]:
+        """
+        Get the voting categories of a major battle.
+
+        **This is an unofficial method**; it uses parsed data from the site, not an API
+        endpoint.
+
+        :returns: List of strings representing voting category names or None if the
+            battle is not a major.
+        :raises ConnectionError: On connection error
+        """
+        battle = self.battle_load(battle_id)
+        if not battle or not battle.is_major:
+            return None
+
+        ret = self._s.get(
+            f"https://battleofthebits.com/ajax/req/Battle/AjaxInfoRules/{battle_id}"
+        )
+        if ret.status_code != 200:
+            raise ConnectionError(f"{ret.status_code}: {ret.text}")
+
+        soup = BeautifulSoup(ret.text, "lxml")
+        try:
+            return [
+                c.strip()
+                for c in soup.find_all("ul", "noBullet")[0].text.split(" &bullet; ")
+            ]
+        except (AttributeError, IndexError, KeyError):
+            return None
+
+    def battle_get_bitpacks(self, battle_id: int) -> List[str]:
+        """
+        Get a list of bitpack URLs for the battle.
+
+        Bitpacks are ordered by period, from earliest to latest. OHBs only have an entry
+        period, so this list will only have one item. Majors usually only have an entry
+        period and thus only one item; there are also majors with a bit period (e.g.
+        Detroit series), although the bit period does not have its own bitpack; and the
+        Advent Calendar majors, which have a separate period for each day, each with its
+        own bitpack. Some majors, like Winter Chip/Summer Chip, have no bitpack.
+
+        **This is an unofficial method**; it uses parsed data from the site, not an API
+        endpoint.
+
+        :returns: List of strings representing voting category names or None if the
+            battle is not a major.
+        :raises ConnectionError: On connection error
+        """
+        battle = self.battle_load(battle_id)
+        if not battle:
+            return []
+
+        ret = self._s.get(
+            f"https://battleofthebits.com/ajax/req/Battle/AjaxInfoRules/{battle_id}"
+        )
+        if ret.status_code != 200:
+            raise ConnectionError(f"{ret.status_code}: {ret.text}")
+
+        soup = BeautifulSoup(ret.text, "lxml")
+        try:
+            return list(
+                reversed(
+                    [
+                        "https://battleofthebits.com" + link["href"]
+                        for link in soup.find_all("a")
+                        if link["href"].startswith("/player/BitPackDonload")
+                    ]
+                )
+            )
+        except (AttributeError, IndexError, KeyError):
+            return []
+
     #
     # Entries
     #

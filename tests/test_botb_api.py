@@ -149,6 +149,47 @@ def test_botb_api_battle(botb):
     for b in ret:
         assert type(b) is pybotb.types.Battle
 
+    # pyBotB methods
+
+    # Get battle description
+    ret = botb.battle_get_description(9775)
+    assert (
+        ret
+        == '\n<span class="tb5">write a \r<br/>\nwalkthrough \r<br/>\nfor a fictional \r<br/>\nvideo game!</span> <br/>\n<br/>\n<b><a href="https://battleofthebits.com/arena/Entry/WALKTHROUGH/71049/">original concept by lumiscosity</a></b>\n'
+    )
+
+    ret = botb.battle_get_description(9000)
+    assert ret is None
+
+    # Get voting categories
+    ret = botb.battle_get_voting_categories(9615)
+    assert ret == [
+        "snowyness",
+        "decorativity",
+        "yum factor",
+        "adventism",
+        "candlelight in pants",
+    ]
+
+    ret = botb.battle_get_voting_categories(9000)
+    assert ret is None
+
+    # Get bitpacks
+    ret = botb.battle_get_bitpacks(9615)
+    assert len(ret) == 24
+
+    ret = botb.battle_get_bitpacks(9696)
+    assert len(ret) == 0
+
+    ret = botb.battle_get_bitpacks(9680)
+    assert len(ret) == 1
+
+    ret = botb.battle_get_bitpacks(9587)
+    assert len(ret) == 1
+
+    ret = botb.battle_get_bitpacks(2151)
+    assert len(ret) == 1
+
 
 def test_botb_api_entry(botb):
     """Test entry API methods."""
