@@ -75,7 +75,14 @@ def test_botb_api_botbr(botb):
     assert botb.botbr_levels[0] == 0
 
     assert botb.botbr_get_id_for_username("uart") == 16333
-    assert botb.botbr_load_for_username("uart") == botb.botbr_load(16333)
+
+    # HACK: Boon count can (and does) change between the two requests, so we
+    # manually override it here to prevent false failures.
+    ret1 = botb.botbr_load_for_username("uart")
+    ret1.boons = 0
+    ret2 = botb.botbr_load(16333)
+    ret2.boons = 0
+    assert ret1 == ret2
 
     # Get favorite entries
     ret = botb.botbr_get_favorite_entries(16333, max_items=50)
