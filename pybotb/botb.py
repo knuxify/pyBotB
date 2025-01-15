@@ -76,6 +76,7 @@ class PaginatedList:
         self.max_items = max_items
         self.args = args
         self.kwargs = kwargs
+        self.max_page_size = 500
         if "page_number" in kwargs or "page_length" in kwargs:
             raise ValueError(
                 "Paginated iterator does not accept page number or page length args"
@@ -89,9 +90,9 @@ class PaginatedList:
         # If we have a max_items value and it's smaller than 500, then
         # only fetch 1 page with the desired size.
         if self.max_items > 0:
-            page_length = min(self.max_items, 500)
+            page_length = min(self.max_items, self.max_page_size)
         else:
-            page_length = 500
+            page_length = self.max_page_size
 
         if self.offset:
             count = self.offset
@@ -110,8 +111,8 @@ class PaginatedList:
 
                 # If max_items is set and larger than the max page length, make sure
                 # that if we're on the last page we only fetch as many objects as we need
-                if self.max_items > 500:
-                    page_length = min((self.max_items - count), 500)
+                if self.max_items > self.max_page_size:
+                    page_length = min((self.max_items - count), self.max_page_size)
 
                 # Load the next page and reset the index
                 page += 1
