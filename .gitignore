@@ -12,3 +12,6 @@ docs/_build
 .ruff_cache
 
 _cookies.pkl
+
+.coverage
+htmlcov/
