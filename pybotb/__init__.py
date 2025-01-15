@@ -6,3 +6,5 @@ writing bots.
 
 VERSION = "0.0.1"
 VERSION_TUPLE = (0, 0, 1)
+
+from .botb import BotB, Condition
