@@ -770,7 +770,10 @@ class BotB:
         soup = BeautifulSoup(ret.text, "lxml")
 
         # First <p> element is Tags Given
-        return list(parse_tag_cloud(soup.find("p").prettify()).keys())
+        try:
+            return list(parse_tag_cloud(soup.find("p").prettify()).keys())  # type: ignore
+        except AttributeError:
+            return []
 
     def botbr_get_tags_received(self, botbr_id: int) -> List[str]:
         """
@@ -939,9 +942,9 @@ class BotB:
         try:
             flag_class = (
                 soup.find(id="pageBG")
-                .find("div", "grid_1")
-                .find("div", "grid_8")
-                .find("div", "flag")["class"]
+                .find("div", "grid_1")  # type: ignore
+                .find("div", "grid_8")  # type: ignore
+                .find("div", "flag")["class"]  # type: ignore
             )
             for c in flag_class:
                 if c.startswith("icons-flag-"):
@@ -1244,11 +1247,7 @@ class BotB:
 
         soup = BeautifulSoup(ret.text, "lxml")
         try:
-            return (
-                soup.find("div", "inner")
-                .find("div", "t1")
-                .decode_contents()
-            )
+            return soup.find("div", "inner").find("div", "t1").decode_contents()  # type: ignore
         except (AttributeError, IndexError, KeyError):
             return ""
 
@@ -1277,7 +1276,7 @@ class BotB:
         try:
             return [
                 c.strip()
-                for c in soup.find("ul", "noBullet").text.split(" &bullet; ")
+                for c in soup.find("ul", "noBullet").text.split(" &bullet; ")  # type: ignore
             ]
         except (AttributeError, IndexError, KeyError):
             return None
