@@ -35,6 +35,7 @@ Available object types are:
 
 * `battle` - a battle, either a major battle or an X Hour Battle (XHB).
 * `botbr` - a BotBr, user of the site.
+* `botbr_points` - the points for a BotBr for a specific class.
 * `entry` - an entry, a single submission to a battle.
 * `favorite` - a single favorite on an entry.
 * `format` - a battle format.
@@ -57,6 +58,7 @@ All object commands have at least 3 of the 4 basic commands: `load`, `list`, `ra
 |-----------------------|------|------|--------|--------|
 | `battle`				| ✔    | ✔    | ✔      | ✔      |
 | `botbr`				| ✔    | ✔    | ✔      | ✔      |
+| `botbr_points`		| ✔    | ✔    | ✔      | ✘      |
 | `entry`				| ✔    | ✔    | ✔      | ✔      |
 | `favorite`			| ✔    | ✔    | ✔      | ✘      |
 | `format`				| ✔    | ✔    | ✔      | ✘      |
@@ -138,6 +140,8 @@ JSON-encoded conditions look as follows:
 ```
 
 where `property` is the property to filter to, `operator` is the operator, and `operand` is the value passed through the operator.
+
+All conditions have to be met for an item to match (think of it like an `AND` match).
 
 ```{note}
 Some API queries within the site's client-side JS also provide a "key" property (usually set to the same value as "property"); however, it appears to be unused and can safely be ignored (TODO?).
@@ -569,6 +573,7 @@ you'll see in the wild.
 This is a WIP list of quirks with the BotB API and various objects that exist within BotB's nearly 20-year-old database. These are all worked around in pyBotB; they are listed here as they could be of interest to other API implementations.
 
 * **Battle:** Battles fetched through the `/api/v1/battle/load` endpoint do not have `period` and `period_end(_*)` properties. If you need to access them, use the `list` endpoint with a filter to match for the ID.
+  * This also applies to the `battle` object returned by `entry` APIs.
 * **Battle:** Battles in the Tally Period do not return a `period` value (though they do have a `period_end` value).
 * **Entry:** Some older entries do not have comment threads attached to them; for those entries, the `posts` property will be missing. If you depend on it being there, you can assume that a missing `posts` property is equivalent to a `posts` value of `0`.
 
