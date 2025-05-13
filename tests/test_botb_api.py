@@ -131,6 +131,34 @@ def test_botb_api_botbr(botb):
     ret = botb.botbr_get_country_code(123456787654321)
     assert ret is None
 
+    # Get points data
+    ret = [b for b in botb.botbr_get_points(16333, max_items=10)]
+    assert len(ret) == 10
+    for b in ret:
+        assert type(b) is pybotb.types.BotBrPoints
+        assert b.botbr_id == 16333
+
+
+def test_botb_api_botbr_points(botb):
+    """Test BotBr points API methods."""
+    # Load
+    ret = botb.botbr_points_load(1234)
+    assert ret
+    assert ret.id == 1234
+
+    # Load 404
+    ret = botb.botbr_points_load(12345678987654321)
+    assert ret is None
+
+    # Random
+    ret = botb.botbr_points_random()
+    assert ret
+    assert type(ret) is pybotb.types.BotBrPoints
+
+    # List
+    ret = [b for b in botb.botbr_points_list(sort="id", desc=True, max_items=50)]
+    assert ret
+
 
 def test_botb_api_battle(botb):
     """Test battle API methods."""

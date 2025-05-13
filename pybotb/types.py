@@ -211,6 +211,52 @@ class BotBr:
         return self.__repr__()
 
 
+@dataclass
+class BotBrPoints:
+    """
+    Represents the point stats for a single BotBr, for a specific class.
+
+    Properties directly match API data, except where noted otherwise.
+    """
+
+    #: Amount of points of the given type.
+    amount: int
+
+    #: ID of the BotBr who the points belong to.
+    botbr_id: int
+
+    #: ID of the BotBrPoints object.
+    id: int
+
+    #: The type/class name of the points.
+    type: str
+
+    #: Raw JSON payload used to create this class. Useful if e.g. you need a raw
+    #: value that isn't exposed through the class.
+    _raw_payload: Optional[dict] = field(default=None, repr=False)
+
+    @classmethod
+    def from_payload(cls, payload: dict) -> Self:
+        """
+        Convert a JSON payload (provided as a dict) into a BotBr object.
+
+        :param payload: Dictionary containing the JSON payload.
+        :returns: The resulting BotBr object.
+        """
+        payload_parsed = payload.copy()
+
+        ret = unroll_payload(cls, payload_parsed)
+        ret._raw_payload = payload.copy()
+
+        return ret
+
+    def __repr__(self):
+        return f"<BotBrPoints: {self.amount} {self.type} points for BotBr ID {self.botbr_id} (ID {self.id})>"
+
+    def __str__(self):
+        return self.__repr__()
+
+
 @document_enum
 class Medium(StrEnum):
     """

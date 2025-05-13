@@ -21,6 +21,7 @@ from . import VERSION
 from .types import (
     Battle,
     BotBr,
+    BotBrPoints,
     Entry,
     Favorite,
     Format,
@@ -953,6 +954,162 @@ class BotB:
             return None
 
         return None
+
+    def botbr_get_points(
+        self,
+        botbr_id: int,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+        offset: int = 0,
+    ) -> Iterable[BotBrPoints]:
+        """
+        Get full points data (BotBrPoints objects) for the BotBr with the given ID.
+
+        :param botbr_id: ID of the BotBr to get points data for.
+        :param desc: If True, returns items in descending order. Requires sort key to be
+            set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value as
+            the value. Note that filters are deprecated; conditions should be used
+            instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
+        :returns: List of Entry objects representing the list results. If the search
+            returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        """
+        _conditions = [Condition("botbr_id", "=", botbr_id)]
+        if conditions:
+            _conditions = conditions + _conditions
+
+        return self.botbr_points_list(
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=_conditions,
+            max_items=max_items,
+            offset=offset,
+        )
+
+    #
+    # BotBr points
+    #
+
+    def botbr_points_load(self, botbr_points_id: int) -> Union[BotBrPoints, None]:
+        """
+        Load a BotBr's points info by the ID of the points object.
+
+        To get points for a BotBr, see `:py:method:.BotB.botbr_get_points`.
+
+        :api: /api/v1/botbr_points/load
+        :param botbr_points_id: ID of the botbr_points object to load.
+        :returns: BotBrPoints object representing the user, or None if the user is not found.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._load("botbr_points", botbr_points_id)
+        if ret is None:
+            return None
+
+        return BotBrPoints.from_payload(ret)
+
+    def _botbr_points_list_noiter(
+        self,
+        page_number: int = 0,
+        page_length: int = 25,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+    ) -> List[BotBrPoints]:
+        """
+        Search for botbr_points objects that match the given query (Non-PaginatedList version).
+
+        For a list of supported filter/condition properties, see :py:class:`.BotBrPoints`.
+
+        :api: /api/v1/botbr_points/list
+        :param page_number: Number of the list page, for pagination.
+        :param page_length: Length of the list page, for pagination (max. 250).
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :returns: List of BotBrPoints objects representing the search results. If the
+                  search returned no results, the list will be empty.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        ret = self._list(
+            "botbr_points",
+            page_number=page_number,
+            page_length=page_length,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+        )
+
+        out = []
+        for payload in ret:
+            out.append(BotBrPoints.from_payload(payload))
+
+        return out
+
+    def botbr_points_list(
+        self,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+        offset: int = 0,
+    ) -> Iterable[BotBrPoints]:
+        """
+        Search for botbr_points objects that match the given query.
+
+        For a list of supported filter/condition properties, see :py:class:`.BotBrPoints`.
+
+        :api: /api/v1/botbr_points/list
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
+        :returns: :class:`PaginatedList` of BotBrPoints objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        return PaginatedList(
+            self._botbr_points_list_noiter,
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+            max_items=max_items,
+            offset=offset,
+        )
+
+    def botbr_points_random(self) -> BotBrPoints:
+        """
+        Get a random botbr_points object.
+
+        :api: /api/v1/botbr_points/random
+        :returns: BotBrPoints object representing the result.
+        :raises ConnectionError: On connection error.
+        """
+        ret = self._random("botbr_points")
+
+        return BotBrPoints.from_payload(ret)
 
     #
     # Battles
