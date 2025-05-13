@@ -215,8 +215,6 @@ class BotBr:
 class BotBrPoints:
     """
     Represents the point stats for a single BotBr, for a specific class.
-
-    Properties directly match API data, except where noted otherwise.
     """
 
     #: Amount of points of the given type.
