@@ -78,10 +78,13 @@ def test_botb_api_botbr(botb):
 
     # HACK: Boon count can (and does) change between the two requests, so we
     # manually override it here to prevent false failures.
+    # We also need to modify the raw_payload which also contains the boon count...
     ret1 = botb.botbr_load_for_username("uart")
     ret1.boons = 0
+    ret1._raw_payload["boons"] = "0"
     ret2 = botb.botbr_load(16333)
     ret2.boons = 0
+    ret2._raw_payload["boons"] = "0"
     assert ret1 == ret2
 
     # Get favorite entries
