@@ -1007,7 +1007,8 @@ class BotB:
 
         :api: /api/v1/botbr_points/load
         :param botbr_points_id: ID of the botbr_points object to load.
-        :returns: BotBrPoints object representing the user, or None if the user is not found.
+        :returns: BotBrPoints object representing the user's points, or None if the user
+            is not found.
         :raises ConnectionError: On connection error.
         """
         ret = self._load("botbr_points", botbr_points_id)
@@ -1026,7 +1027,8 @@ class BotB:
         conditions: Optional[List[Condition]] = None,
     ) -> List[BotBrPoints]:
         """
-        Search for botbr_points objects that match the given query (Non-PaginatedList version).
+        Search for botbr_points objects that match the given query (Non-PaginatedList
+        version).
 
         For a list of supported filter/condition properties, see :py:class:`.BotBrPoints`.
 
@@ -1121,7 +1123,8 @@ class BotB:
 
         :api: /api/v1/battle/load
         :param battle_id: ID of the battle to load.
-        :returns: Battle object representing the user, or None if the user is not found.
+        :returns: Battle object representing the battle, or None if the battle is not
+            found.
         :raises ConnectionError: On connection error.
         """
         # HACK: Battles loaded through the load endpoint don't have the period value;
@@ -1234,7 +1237,7 @@ class BotB:
         Get a random battle.
 
         :api: /api/v1/battle/random
-        :returns: Battle object representing the user.
+        :returns: Battle object representing the battle.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("battle")
@@ -1490,7 +1493,8 @@ class BotB:
 
         :api: /api/v1/entry/load
         :param entry_id: ID of the entry to load.
-        :returns: Entry object representing the user, or None if the user is not found.
+        :returns: Entry object representing the entry, or None if the entry is not
+            found.
         :raises ConnectionError: On connection error.
         """
         ret = self._load("entry", entry_id)
@@ -1587,7 +1591,7 @@ class BotB:
         Get a random entry.
 
         :api: /api/v1/entry/random
-        :returns: Entry object representing the user.
+        :returns: Entry object representing the entry.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("entry")
@@ -1780,8 +1784,8 @@ class BotB:
 
         :api: /api/v1/favorite/load
         :param favorite_id: ID of the favorite to load.
-        :returns: Favorite object representing the user, or None if the user is not
-            found.
+        :returns: Favorite object representing the favorite, or None if the favorite is
+            not found.
         :raises ConnectionError: On connection error.
         """
         ret = self._load("favorite", favorite_id)
@@ -1878,7 +1882,7 @@ class BotB:
         Get a random favorite.
 
         :api: /api/v1/favorite/random
-        :returns: Favorite object representing the user.
+        :returns: Favorite object representing the favorite.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("favorite")
@@ -1895,7 +1899,8 @@ class BotB:
 
         :api: /api/v1/format/load
         :param format_id: ID of the format to load.
-        :returns: Format object representing the user, or None if the user is not found.
+        :returns: Format object representing the format, or None if the format is not
+            found.
         :raises ConnectionError: On connection error.
         """
         ret = self._load("format", format_id)
@@ -1992,7 +1997,7 @@ class BotB:
         Get a random format.
 
         :api: /api/v1/format/random
-        :returns: Format object representing the user.
+        :returns: Format object representing the format.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("format")
@@ -2008,9 +2013,9 @@ class BotB:
         Load a group thread's info by their ID.
 
         :api: /api/v1/group_thread/load
-        :param group_thread_id: ID of the group_thread to load.
-        :returns: GroupThread object representing the user, or None if the user is not
-            found.
+        :param group_thread_id: ID of the group thread to load.
+        :returns: GroupThread object representing the group thread, or None if the group
+            thread is not found.
         :raises ConnectionError: On connection error.
         """
         ret = self._load("group_thread", group_thread_id)
@@ -2107,7 +2112,7 @@ class BotB:
         Get a random group thread.
 
         :api: /api/v1/group_thread/random
-        :returns: GroupThread object representing the user.
+        :returns: GroupThread object representing the group thread.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("group_thread")
@@ -2169,9 +2174,9 @@ class BotB:
         Load a lyceum article's info by their ID.
 
         :api: /api/v1/lyceum_article/load
-        :param lyceum_article_id: ID of the lyceum_article to load.
-        :returns: LyceumArticle object representing the user, or None if the user is not
-            found.
+        :param lyceum_article_id: ID of the lyceum article to load.
+        :returns: LyceumArticle object representing the lyceum article, or None if the
+            lyceum article is not found.
         :raises ConnectionError: On connection error.
         """
         ret = self._load("lyceum_article", lyceum_article_id)
@@ -2269,7 +2274,7 @@ class BotB:
         Get a random lyceum article.
 
         :api: /api/v1/lyceum_article/random
-        :returns: LyceumArticle object representing the user.
+        :returns: LyceumArticle object representing the lyceum article.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("lyceum_article")
@@ -2335,7 +2340,7 @@ class BotB:
 
         :api: /api/v1/palette/load
         :param palette_id: ID of the palette to load.
-        :returns: Palette object representing the user, or None if the user is not
+        :returns: Palette object representing the palette, or None if the palette is not
             found.
         :raises ConnectionError: On connection error.
         """
@@ -2433,7 +2438,7 @@ class BotB:
         Get a random palette.
 
         :api: /api/v1/palette/random
-        :returns: Palette object representing the user.
+        :returns: Palette object representing the palette.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("palette")
@@ -2469,8 +2474,8 @@ class BotB:
 
         :api: /api/v1/playlist/load
         :param playlist_id: ID of the playlist to load.
-        :returns: Playlist object representing the user, or None if the user is not
-            found.
+        :returns: Playlist object representing the playlist, or None if the playlist is
+            not found.
         :raises ConnectionError: On connection error.
         """
         ret = self._load("playlist", playlist_id)
@@ -2567,7 +2572,7 @@ class BotB:
         Get a random playlist.
 
         :api: /api/v1/playlist/random
-        :returns: Playlist object representing the user.
+        :returns: Playlist object representing the playlist.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("playlist")
@@ -2730,7 +2735,7 @@ class BotB:
 
         :api: /api/v1/tag/load
         :param tag_id: ID of the tag to load.
-        :returns: Tag object representing the user, or None if the user is not found.
+        :returns: Tag object representing the tag, or None if the tag is not found.
         :raises ConnectionError: On connection error.
         """
         ret = self._load("tag", tag_id)
@@ -2827,7 +2832,7 @@ class BotB:
         Get a random tag.
 
         :api: /api/v1/tag/random
-        :returns: Tag object representing the user.
+        :returns: Tag object representing the tag.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("tag")
@@ -3115,7 +3120,7 @@ class BotB:
         Get a random BotBr stat.
 
         :api: /api/v1/botbr_stats/random
-        :returns: BotBrStats object representing the user.
+        :returns: BotBrStats object representing the stats.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("botbr_stats")
@@ -3132,7 +3137,7 @@ class BotB:
 
         :api: /api/v1/daily_stats/load
         :param daily_stats_id: ID of the daily_stats to load.
-        :returns: DailyStats object representing the user, or None if the user is not
+        :returns: DailyStats object representing the stats, or None if the object is not
             found.
         :raises ConnectionError: On connection error.
         """
@@ -3230,7 +3235,7 @@ class BotB:
         Get a random daily stat.
 
         :api: /api/v1/daily_stats/random
-        :returns: DailyStats object representing the user.
+        :returns: DailyStats object representing the stats.
         :raises ConnectionError: On connection error.
         """
         ret = self._random("daily_stats")
