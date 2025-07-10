@@ -213,7 +213,7 @@ def test_botb_api_battle(botb):
     ret = botb.battle_get_description(9775)
     assert (
         ret
-        == '\n<span class="tb5">write a \r<br/>\nwalkthrough \r<br/>\nfor a fictional \r<br/>\nvideo game!</span> <br/>\n<br/>\n<b><a href="https://battleofthebits.com/arena/Entry/WALKTHROUGH/71049/">original concept by lumiscosity</a></b>\n'
+        == '\n<span class="tb5">write a \n<br/>\nwalkthrough \n<br/>\nfor a fictional \n<br/>\nvideo game!</span>\n<br/>\n<br/>\n<b><a href="https://battleofthebits.com/arena/Entry/WALKTHROUGH/71049/">original concept by lumiscosity</a></b>\n'
     )
 
     ret = botb.battle_get_description(9000)
