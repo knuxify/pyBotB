@@ -56,7 +56,7 @@ close-quotes-on-newline = true
 pre-summary-newline = true
 
 [tool.poe.tasks]
-test = "python3 -m pytest"
+test = "python3 -m pytest -vv"
 lint = "ruff check ."
 build-docs = "sphinx-build -M html docs/ docs/_build/"
 serve-docs = "sh -c \"PYTHONPATH=. sphinx-autobuild docs/ docs/_build/\""
