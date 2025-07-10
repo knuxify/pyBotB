@@ -203,6 +203,12 @@ def test_botb_api_battle(botb):
 
     # pyBotB methods
 
+    # Get entries
+    ret = [b for b in botb.battle_get_entries(9543, sort="id", desc=True, max_items=50)]
+    assert ret
+    assert len(ret) == 7
+    assert 72221 in [e.id for e in ret]
+
     # Get battle description
     ret = botb.battle_get_description(9775)
     assert (

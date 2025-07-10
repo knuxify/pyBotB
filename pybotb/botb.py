@@ -1384,6 +1384,54 @@ class BotB:
             out.append(Battle.from_payload(b))
         return out
 
+    def battle_get_entries(
+        self,
+        battle_id: int,
+        desc: bool = False,
+        sort: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        conditions: Optional[List[Condition]] = None,
+        max_items: int = 0,
+        offset: int = 0,
+    ) -> List[Entry]:
+        """
+        Get the entries submitted to this battle.
+
+        Shorthand for `.entry_list` with a condition to match for the battle ID.
+
+        For a list of supported filter/condition properties, see :py:class:`.Entry`.
+
+        :api: /api/v1/entry/list
+        :param desc: If True, returns items in descending order. Requires sort key to be set.
+        :param sort: Object property to sort by.
+        :param filters: Dictionary with object property as the key and filter value
+                        as the value. Note that filters are deprecated; conditions
+                        should be used instead.
+        :param conditions: List of Condition objects containing list conditions.
+        :param max_items: Maximum amount of items to return; 0 for no limit.
+        :param offset: Skip the first N items.
+        :returns: :class:`PaginatedList` of Entry objects representing the search results.
+                  If the search returned no results, the resulting iterable will return no
+                  results.
+        :raises ConnectionError: On connection error.
+        :raises ValueError: If a provided parameter is incorrect.
+        """
+        battle_cond = Condition("battle_id", "=", battle_id)
+
+        if conditions:
+            conditions.prepend(battle_cond)
+        else:
+            conditions = [battle_cond]
+
+        return self.entry_list(
+            desc=desc,
+            sort=sort,
+            filters=filters,
+            conditions=conditions,
+            max_items=max_items,
+            offset=offset,
+        )
+
     def battle_get_description(self, battle_id: int) -> Union[str, None]:
         """
         Get the description of a major battle.
