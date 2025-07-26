@@ -1482,10 +1482,18 @@ class BotB:
 
         soup = BeautifulSoup(ret.text, "lxml")
         try:
-            return [
+            out = [
                 c.strip()
                 for c in soup.find("ul", "noBullet").text.split(" &bullet; ")  # type: ignore
             ]
+
+            if len(out) <= 1:
+                out = [
+                    c.strip()
+                    for c in soup.find("ul", "noBullet").text.split(" • ")  # type: ignore
+                ]
+
+            return out
         except (AttributeError, IndexError, KeyError):
             return None
 
